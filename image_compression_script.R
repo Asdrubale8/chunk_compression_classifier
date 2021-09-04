@@ -1,5 +1,8 @@
 source("image_compression_lib.R");
 
+detach("package:caret", unload = TRUE)
+
+ip = data.frame(installed.packages())$Package
 #install.packages("FactoMineR")
 library(FactoMineR)
 #install.packages("factoextra")
@@ -24,33 +27,70 @@ library(C50)
 library(caret)
 #install.packages("ROCR")
 library(ROCR)
-#install.packages("pROC")
-library(pROC) 
+if(! "pROC" %in% ip){
+  install.packages("pROC")
+}
+library(pROC)
 
-#---------------------------- import -------------------------------------------
+remove.packages("pROC")
+
+# Domande
+# 1. La PCA va fatta solo sul training set ??
+# 2. Per confrontare i modelli va bene anche se hanno due librerie diverse ?
+
+#---------------------------- import and preprocess ----------------------------
 image_compression=load("image_compression_labeled_total2.csv");
 dim(image_compression)
 image_compression= unique(image_compression);
 dim(image_compression)
 image_compression=preprocess(image_compression);
+dim(image_compression)
+#---------------------------- visualization-------------------------------------
 sapply(image_compression,class)
+levels(image_compression$Quality)
+summary(image_compression)
+colSums(is.na(image_compression))
 
-#---------------------------- PCA ----------------------------------------------
 image_compression.features=get_features(image_compression)
 image_compression.target=get_target(image_compression)
+
+featurePlot(image_compression.features, image_compression.target,
+            plot="density",
+            scales=list(x=list(relation="free"),
+                        y=list(relation="free")), auto.key=list(columns=3))
+pie(table(image_compression.target))
+
+par(mfrow=c(1,3))
+for(i in 1:3) {
+  boxplot(image_compression.features[,i],
+          main=names(image_compression.features)[i]) }
+for(i in 4:6) {
+  boxplot(image_compression.features[,i],
+          main=names(image_compression.features)[i]) }
+boxplot(image_compression.features[,7],
+        main=names(image_compression.features)[7])
+
+par(mfrow=c(1,1))
+boxplot(Threshold ~ Quality, data = image_compression)
+
+featurePlot(x=image_compression.features, y=image_compression.target,
+            plot="pairs", auto.key=list(columns=3))
+#---------------------------- PCA ----------------------------------------------
 image_compression.pca=PCA(image_compression.features, ncp=3, scale.unit = TRUE)
 
 image_compression.pca.eig = get_eigenvalue(image_compression.pca)
 image_compression.pca.ind = get_pca_ind(image_compression.pca)
 image_compression.pca.var = get_pca_var(image_compression.pca)
 
+fviz_eig(image_compression.pca, addlabels = TRUE, ylim = c(0, 50))
+image_compression.pca.var$coord
+fviz_pca_var(res.pca, col.var = "black")
+
 fviz_pca_biplot(image_compression.pca,
                 select.var=list(contrib=6),ggtheme=theme_minimal())
 fviz_pca_ind(image_compression.pca, 
              col.ind = "cos2", gradient.cols=c("#00AFBB","#E7B800","#FC4E07"),
              repel=TRUE)
-featurePlot(x=image_compression.features,
-            y=image_compression.target, plot="pairs", auto.key=list(columns=2))
 
 image_compression.reduced = data.frame(image_compression.pca$ind$coord)
 image_compression.reduced$target = image_compression.target
@@ -69,7 +109,7 @@ confusion.matrix = table(testset$target, testset$Prediction)
 sum(diag(confusion.matrix))/sum(confusion.matrix) 
 plotcp(decisionTree)
 
-cp.decided = .021 
+cp.decided = 0.023
 prunedDecisionTree = prune(decisionTree, cp=cp.decided)
 plotcp(prunedDecisionTree)
 fancyRpartPlot(prunedDecisionTree)
@@ -147,7 +187,7 @@ control = trainControl(method = "cv", number = 10,
                        classProbs = TRUE, summaryFunction = twoClassSummary)
 rpart.model = train(target ~ ., data=trainset, method = "rpart", metric = "ROC",
                     trControl = control)
-
+fancyRpartPlot(rpart.model$finalModel)
 rpart.model$confusion.matrix = confusionMatrix(rpart.model, norm = "none")$table
 svm.model =  train(target ~ ., data=trainset, method = "svmLinear",
                    metric = "ROC", trControl = control)
@@ -173,6 +213,15 @@ splom(cv.values,metric="ROC")
 cv.values$timings # get the train times for both models
 
 rpart.model$confusion.matrix
+plt <- as.data.frame(rpart.model$confusion.matrix)
+plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
+  geom_tile() + geom_text(aes(label=Freq)) +
+  scale_fill_gradient(low="white", high="#009194") +
+  labs(x = "Reference",y = "Prediction") +
+  scale_x_discrete(labels=c("High quality","Low Quality")) +
+  scale_y_discrete(labels=c("Low Quality","High quality"))
+
 sum(diag(rpart.model$confusion.matrix))/sum(rpart.model$confusion.matrix)
 precision(rpart.model$confusion.matrix, relevant=levels(trainset$target)[1])
 precision(rpart.model$confusion.matrix, relevant=levels(trainset$target)[2])
@@ -182,6 +231,15 @@ F_meas(rpart.model$confusion.matrix, relevant=levels(trainset$target)[1])
 F_meas(rpart.model$confusion.matrix, relevant=levels(trainset$target)[2])
 
 svm.model$confusion.matrix
+plt <- as.data.frame(svm.model$confusion.matrix)
+plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
+  geom_tile() + geom_text(aes(label=Freq)) +
+  scale_fill_gradient(low="white", high="#009194") +
+  labs(x = "Reference",y = "Prediction") +
+  scale_x_discrete(labels=c("High quality","Low Quality")) +
+  scale_y_discrete(labels=c("Low Quality","High quality"))
+
 sum(diag(svm.model$confusion.matrix))/sum(svm.model$confusion.matrix)
 precision(svm.model$confusion.matrix, relevant=levels(trainset$target)[1])
 precision(svm.model$confusion.matrix, relevant=levels(trainset$target)[2])
@@ -189,3 +247,16 @@ recall(svm.model$confusion.matrix, relevant=levels(trainset$target)[1])
 recall(svm.model$confusion.matrix, relevant=levels(trainset$target)[2])
 F_meas(svm.model$confusion.matrix, relevant=levels(trainset$target)[1])
 F_meas(svm.model$confusion.matrix, relevant=levels(trainset$target)[2])
+
+
+
+ind = sample(2, nrow(image_compression), replace = TRUE, prob=c(0.7, 0.3))
+trainset = image_compression[ind == 1,]
+testset = image_compression[ind == 2,]
+trainset$low_quality = trainset$Quality == "low_quality"
+trainset$high_quality = trainset$Quality == "high_quality"
+network = neuralnet(low_quality + high_quality~ Threshold + Mean + Median + Variance + Rms.contrast + M.contrast + Entropy, trainset, hidden=3)
+plot(network)
+net.predict = compute(network, testset[c("Threshold","Mean","Median","Variance","Rms.contrast","M.contrast","Entropy")])$net.result
+net.prediction = c("low_quality", "high_quality")[apply(net.predict, 1, which.max)]
+predict.table = table(testset$Quality, net.prediction)
