@@ -34,6 +34,12 @@ library(pROC)
 
 remove.packages("pROC")
 
+#install.packages("neuralnet")
+library(neuralnet)
+
+#install.packages("RSNNS")
+library(RSNNS)
+
 # Domande
 # 1. La PCA va fatta solo sul training set ??
 # 2. Per confrontare i modelli va bene anche se hanno due librerie diverse ?
@@ -84,7 +90,7 @@ image_compression.pca.var = get_pca_var(image_compression.pca)
 
 fviz_eig(image_compression.pca, addlabels = TRUE, ylim = c(0, 50))
 image_compression.pca.var$coord
-fviz_pca_var(res.pca, col.var = "black")
+fviz_pca_var(image_compression.pca, col.var = "black")
 
 fviz_pca_biplot(image_compression.pca,
                 select.var=list(contrib=6),ggtheme=theme_minimal())
@@ -162,6 +168,23 @@ recall(confusion.matrix, relevant=levels(testset$target)[2])
 F_meas(confusion.matrix, relevant=levels(testset$target)[1])
 F_meas(confusion.matrix, relevant=levels(testset$target)[2])
 
+#--------------------------- Nnet ----------------------------------------------
+#ind = sample(2, nrow(image_compression.reduced), replace = TRUE, prob=c(0.7, 0.3))
+#trainset = image_compression.reduced[ind == 1,]
+#testset = image_compression.reduced[ind == 2,]
+#trainset$low_quality = trainset$target == "low_quality"
+#trainset$high_quality = trainset$target == "high_quality"
+#network = neuralnet(low_quality + high_quality~ Dim.1 + Dim.2 + Dim.3, trainset, hidden=5)
+#plot(network)
+#net.predict = compute(network, testset[c("Dim.1","Dim.2","Dim.3")])$net.result
+#net.prediction = c("low_quality", "high_quality")[apply(net.predict, 1, which.max)]
+#predict.table = table(testset$target, net.prediction)
+
+control = trainControl(method = "cv", number = 10, classProbs = TRUE, summaryFunction = twoClassSummary)
+nnet.model = train(target ~ ., data=trainset, method = "nnet", metric = "ROC", trControl = control)
+nnet.model$confusion.matrix = confusionMatrix(nnet.model, norm = "none")$table
+nnet.model$confusion.matrix
+
 #-------------------------- measure 10-cross fold validation  ------------------
 
 #pred.rocr = prediction(c(svm.pred), testset$target) 
@@ -189,23 +212,35 @@ rpart.model = train(target ~ ., data=trainset, method = "rpart", metric = "ROC",
                     trControl = control)
 fancyRpartPlot(rpart.model$finalModel)
 rpart.model$confusion.matrix = confusionMatrix(rpart.model, norm = "none")$table
+
 svm.model =  train(target ~ ., data=trainset, method = "svmLinear",
                    metric = "ROC", trControl = control)
 svm.model$confusion.matrix = confusionMatrix(svm.model, norm = "none")$table
+
 svm.probs = predict(svm.model, testset[,! names(testset) %in% c("target")],
                     type = "prob")
 rpart.probs = predict(rpart.model, testset[,! names(testset) %in% c("target")],
                       type = "prob")
+nnet.probs = predict(nnet.model, testset[,! names(testset) %in% c("target")],
+                     type = "prob")
+
 svm.ROC = roc(response = testset$target, predictor = svm.probs$high_quality,
               levels = levels(testset[,c("target")]))
 plot(svm.ROC,type="S", col="green")
+
 rpart.ROC = roc(response = testset[,c("target")],
                 predictor =rpart.probs$high_quality,
                 levels = levels(testset[,c("target")]))
 plot(rpart.ROC, add=TRUE, col="blue")
+
+nnet.ROC = roc(response = testset$target, predictor = nnet.probs$high_quality,
+              levels = levels(testset[,c("target")]))
+plot(nnet.ROC, add=TRUE, col="red")
+
 svm.ROC
 rpart.ROC
-cv.values = resamples(list(svm=svm.model, rpart = rpart.model))
+nnet.ROC
+cv.values = resamples(list(svm=svm.model, rpart = rpart.model, nnet = nnet.model))
 summary(cv.values)
 dotplot(cv.values, metric = "ROC") 
 bwplot(cv.values, layout = c(3, 1))
@@ -248,15 +283,21 @@ recall(svm.model$confusion.matrix, relevant=levels(trainset$target)[2])
 F_meas(svm.model$confusion.matrix, relevant=levels(trainset$target)[1])
 F_meas(svm.model$confusion.matrix, relevant=levels(trainset$target)[2])
 
+nnet.model$confusion.matrix
+plt <- as.data.frame(nnet.model$confusion.matrix)
+plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
+  geom_tile() + geom_text(aes(label=Freq)) +
+  scale_fill_gradient(low="white", high="#009194") +
+  labs(x = "Reference",y = "Prediction") +
+  scale_x_discrete(labels=c("High quality","Low Quality")) +
+  scale_y_discrete(labels=c("Low Quality","High quality"))
 
+sum(diag(nnet.model$confusion.matrix))/sum(nnet.model$confusion.matrix)
+precision(nnet.model$confusion.matrix, relevant=levels(trainset$target)[1])
+precision(nnet.model$confusion.matrix, relevant=levels(trainset$target)[2])
+recall(nnet.model$confusion.matrix, relevant=levels(trainset$target)[1])
+recall(nnet.model$confusion.matrix, relevant=levels(trainset$target)[2])
+F_meas(nnet.model$confusion.matrix, relevant=levels(trainset$target)[1])
+F_meas(nnet.model$confusion.matrix, relevant=levels(trainset$target)[2])
 
-ind = sample(2, nrow(image_compression), replace = TRUE, prob=c(0.7, 0.3))
-trainset = image_compression[ind == 1,]
-testset = image_compression[ind == 2,]
-trainset$low_quality = trainset$Quality == "low_quality"
-trainset$high_quality = trainset$Quality == "high_quality"
-network = neuralnet(low_quality + high_quality~ Threshold + Mean + Median + Variance + Rms.contrast + M.contrast + Entropy, trainset, hidden=3)
-plot(network)
-net.predict = compute(network, testset[c("Threshold","Mean","Median","Variance","Rms.contrast","M.contrast","Entropy")])$net.result
-net.prediction = c("low_quality", "high_quality")[apply(net.predict, 1, which.max)]
-predict.table = table(testset$Quality, net.prediction)
