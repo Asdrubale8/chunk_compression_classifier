@@ -1,44 +1,93 @@
 source("image_compression_lib.R");
 
-detach("package:caret", unload = TRUE)
+#detach("package:caret", unload = TRUE)
 
 ip = data.frame(installed.packages())$Package
+
 #install.packages("FactoMineR")
+if(! "FactoMineR" %in% ip){
+  install.packages("FactoMineR")
+}
 library(FactoMineR)
+
 #install.packages("factoextra")
+if(! "factoextra" %in% ip){
+  install.packages("factoextra")
+}
 library(factoextra)
+
 #install.packages("ggplot2")
+if(! "ggplot2" %in% ip){
+  install.packages("ggplot2")
+}
 library(ggplot2)
+
 #install.packages("rpart")
+if(! "rpart" %in% ip){
+  install.packages("rpart")
+}
 library(rpart)
+
 #install.packages("rattle")
+if(! "rattle" %in% ip){
+  install.packages("rattle")
+}
 library(rattle)
+
 #install.packages("rpart.plot")
+if(! "rpart.plot" %in% ip){
+  install.packages("rpart.plot")
+}
 library(rpart.plot)
+
 #install.packages("RColorBrewer")
+if(! "RColorBrewer" %in% ip){
+  install.packages("RColorBrewer")
+}
 library(RColorBrewer)
+
 #install.packages("e1071")
+if(! "e1071" %in% ip){
+  install.packages("e1071")
+}
 library(e1071)
+
 #install.packages("rgl")
+if(! "rgl" %in% ip){
+  install.packages("rgl")
+}
 library(rgl)
+
 #install.packages("C50")
+if(! "C50" %in% ip){
+  install.packages("C50")
+}
 library(C50)
-#install.packages(”caret")
+
+#install.packages("caret")
+if(! "caret" %in% ip){
+  install.packages("caret")
+}
 library(caret)
+
 #install.packages("ROCR")
+if(! "ROCR" %in% ip){
+  install.packages("ROCR")
+}
 library(ROCR)
+
 if(! "pROC" %in% ip){
   install.packages("pROC")
 }
 library(pROC)
 
-remove.packages("pROC")
+#remove.packages("pROC")
 
 #install.packages("neuralnet")
-library(neuralnet)
+#library(neuralnet)
 
 #install.packages("RSNNS")
-library(RSNNS)
+#library(RSNNS)
 
 # Domande
 # 1. La PCA va fatta solo sul training set ??
@@ -73,8 +122,8 @@ for(i in 1:3) {
 for(i in 4:6) {
   boxplot(image_compression.features[,i],
           main=names(image_compression.features)[i]) }
-boxplot(image_compression.features[,7],
-        main=names(image_compression.features)[7])
+boxplot(image_compression.features[,6],
+        main=names(image_compression.features)[6])
 
 par(mfrow=c(1,1))
 boxplot(Threshold ~ Quality, data = image_compression)
