@@ -4,7 +4,7 @@ load <- function(csv_filename) {
 }
 
 get_features <- function(dataset) {
-  dataset[,c('Threshold','Mean','Median','Variance','Rms.constrast','M.contrast','Entropy')];
+  dataset[,c('Threshold','Mean','Median','Rms.contrast','M.contrast','Entropy')];
 }
 
 get_target <- function(dataset) {
@@ -24,13 +24,15 @@ preprocess <- function(dataset) {
     #Calcolo indici statistici sul chunk
     dataset[chunk_index,'Mean']=mean(chunk);
     dataset[chunk_index,'Median']=median(chunk);
-    dataset[chunk_index,'Variance']=var(chunk);
-    dataset[chunk_index,'Rms.constrast']=sd(chunk);
+    #dataset[chunk_index,'Variance']=var(chunk);
+    dataset[chunk_index,'Rms.contrast']=sd(chunk);
     dataset[chunk_index,'M.contrast']=(max(chunk)-min(chunk))/(max(chunk)+min(chunk));
     dataset[chunk_index,'Entropy']=shannon.entropy(chunk);
     #dataset[chunk_index,'W.contrast']=sd(chunk);
   }
   
+  dataset$Quality[dataset$Quality == "low quality"] = "low_quality";
+  dataset$Quality[dataset$Quality == "high quality"] = "high_quality";
   dataset[,'Quality']=factor(dataset[,'Quality']);
   dataset;
 }
