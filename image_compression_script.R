@@ -81,6 +81,7 @@ boxplot(Threshold ~ Quality, data = image_compression)
 
 featurePlot(x=image_compression.features, y=image_compression.target,
             plot="pairs", auto.key=list(columns=3))
+
 #---------------------------- PCA ----------------------------------------------
 image_compression.pca=PCA(image_compression.features, ncp=3, scale.unit = TRUE)
 
@@ -101,6 +102,15 @@ fviz_pca_ind(image_compression.pca,
 image_compression.reduced = data.frame(image_compression.pca$ind$coord)
 image_compression.reduced$target = image_compression.target
 levels(image_compression.reduced$target) = c("high_quality","low_quality")
+
+featurePlot(x=image_compression.reduced, y=image_compression.reduced$target,
+            plot="pairs", auto.key=list(columns=3))
+
+image_compression.reduced.features = image_compression.reduced[,c('Dim.1','Dim.2','Dim.3')];
+image_compression.reduced.target = image_compression.reduced[,c('target')];
+
+featurePlot(x=image_compression.reduced.features, y=image_compression.reduced.target,
+            plot="pairs", auto.key=list(columns=3))
 
 # -------------------------- trainset/testset ----------------------------------
 allset = split.data(image_compression.reduced, p = 0.7)
