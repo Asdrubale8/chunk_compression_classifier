@@ -37,17 +37,48 @@ preprocess <- function(dataset) {
   dataset;
 }
 
-shannon.entropy <- function(p)
-{
+shannon.entropy <- function(p) {
   if (min(p) < 0 || sum(p) <= 0)
     return(NA)
   p.norm <- p[p>0]/sum(p)
   -sum(log(p.norm,8)*p.norm)
 }
 
-split.data = function(data, p = 0.7, s = 1){
+split.data <- function(data, p = 0.7, s = 1) {
   set.seed(s)
   index = sample(1:dim(data)[1])
   train = data[index[1:floor(dim(data)[1] * p)], ]
   test = data[index[((ceiling(dim(data)[1] * p)) + 1):dim(data)[1]], ]
-  return(list(train=train, test=test)) } 
+  return(list(train=train, test=test)) 
+} 
+
+plot_confusion_matrix <- function(confusion.matrix) {
+  plt <- as.data.frame(confusion.matrix)
+  plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+  ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
+    geom_tile() + geom_text(aes(label=Freq)) +
+    scale_fill_gradient(low="white", high="#009194") +
+    labs(x = "Reference",y = "Prediction") +
+    scale_x_discrete(labels=c("High quality","Low Quality")) +
+    scale_y_discrete(labels=c("Low Quality","High quality"))
+}
+
+plot_svm_3d_graph <- function(svm.model) {
+  coefs <- svm.model$finalModel@coef[[1]]
+  mat <- svm.model$finalModel@xmatrix[[1]]
+  w <- coefs %*% mat
+  detalization <- 100                                                                                                                                                                 
+  grid <- expand.grid(seq(from=min(image_compression.reduced$Dim.1),to=max(image_compression.reduced$Dim.1),
+                          length.out=detalization),                                                                                                         
+                      seq(from=min(image_compression.reduced$Dim.2),to=max(image_compression.reduced$Dim.2),
+                          length.out=detalization))                                                                                                         
+  z <- (svm.model$finalModel@b - w[1,1]*grid[,1] - w[1,2]*grid[,2]) / w[1,3]
+  plot3d(grid[,1],grid[,2],z, col='gray')  # this will draw plane.
+  points3d(image_compression.reduced$Dim.1[which(image_compression.reduced$target=='low_quality')],
+           image_compression.reduced$Dim.2[which(image_compression.reduced$target=='low_quality')],
+           image_compression.reduced$Dim.3[which(image_compression.reduced$target=='low_quality')], col='red')
+  points3d(image_compression.reduced$Dim.1[which(image_compression.reduced$target=='high_quality')],
+           image_compression.reduced$Dim.2[which(image_compression.reduced$target=='high_quality')],
+           image_compression.reduced$Dim.3[which(image_compression.reduced$target=='high_quality')], col='blue')
+  
+}
