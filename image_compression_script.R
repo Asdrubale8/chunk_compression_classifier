@@ -242,7 +242,7 @@ best_tune = nnet.model$bestTune
 best_size = as.numeric(nnet.model$bestTune[1])
 best_decay = as.numeric(nnet.model$bestTune[2])
 folds = nnet.model$resampledCM[nnet.model$resampledCM$size == best_size 
-                               & nnet.model$resampledCM$decay == 1e-01, ]
+                               & nnet.model$resampledCM$decay == best_decay, ]
 
 TP_sd = sd(folds$cell1)
 FP_sd = sd(folds$cell2)
