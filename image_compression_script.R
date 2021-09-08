@@ -90,12 +90,6 @@ library(pROC)
 
 #remove.packages("pROC")
 
-#install.packages("neuralnet")
-library(neuralnet)
-
-#install.packages("RSNNS")
-library(RSNNS)
-
 #---------------------------- import and preprocess ----------------------------
 image_compression = load("image_compression_labeled_total2.csv");
 image_compression = unique(image_compression);
