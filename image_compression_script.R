@@ -167,19 +167,24 @@ image_compression.pca$var$contrib
 
 image_compression.reduced = data.frame(image_compression.pca$ind$coord)
 image_compression.reduced$target = image_compression.target
+target.levels = levels(image_compression.reduced$target)
+
+n_high_quality = as.numeric(table(image_compression.reduced$target)[1])
+n_low_quality = as.numeric(table(image_compression.reduced$target)[2])
+n_individuals = n_high_quality + n_low_quality
 
 # -------------------------- trainset/testset ----------------------------------
 allset = split.data(image_compression.reduced, p = 0.7)
 trainset = allset$train
 testset = allset$test
 
-control = trainControl(method = "repeatedcv", number = 10,
+control = trainControl(method = "cv", number = 10, returnResamp = "final",
                        classProbs = TRUE, summaryFunction = twoClassSummary)
 
 #---------------------------- decision tree ------------------------------------
-#decisionTree = rpart(target ~ ., data=trainset, method="class")
+#decisionTree = rpart(target ~ ., data=image_compression.reduced, method="class")
 #plotcp(decisionTree)
-#cp.decided = 0.023
+#cp.decided = 0.01494565
 #prunedDecisionTree = prune(decisionTree, cp=cp.decided)
 #plotcp(prunedDecisionTree)
 #fancyRpartPlot(prunedDecisionTree)
@@ -198,19 +203,38 @@ ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
   scale_x_discrete(labels=c("High quality","Low Quality")) +
   scale_y_discrete(labels=c("Low Quality","High quality"))
 
+best_tune = as.numeric(rpart.model$bestTune)
+folds = rpart.model$resampledCM[rpart.model$resampledCM$cp == best_tune, ]
+
+TP_sd = sd(folds$cell1)
+FP_sd = sd(folds$cell2)
+FN_sd = sd(folds$cell3)
+TN_sd = sd(folds$cell4)
+
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
          dim(image_compression.reduced)[1] == sum(rpart.model$confusion.matrix)
+         sum(folds$cell1) == rpart.model$confusion.matrix[1,1]
+         sum(folds$cell2) == rpart.model$confusion.matrix[2,1]
+         sum(folds$cell3) == rpart.model$confusion.matrix[1,2]
+         sum(folds$cell4) == rpart.model$confusion.matrix[2,2]
 })
 
-target.levels = levels(image_compression.reduced$target)
 accuracy = sum(diag(rpart.model$confusion.matrix))/sum(rpart.model$confusion.matrix)
-precision(rpart.model$confusion.matrix, relevant=target.levels[1])
-precision(rpart.model$confusion.matrix, relevant=target.levels[2])
-recall(rpart.model$confusion.matrix, relevant=target.levels[1])
-recall(rpart.model$confusion.matrix, relevant=target.levels[2])
+
+p1 = precision(rpart.model$confusion.matrix, relevant=target.levels[1])
+p2 = precision(rpart.model$confusion.matrix, relevant=target.levels[2])
+precision_macro_avg = (p1 + p2) / 2
+precision_micro_avg = (p1 * n_high_quality/tot) + (p2 * n_low_quality/tot)
+
+r1 = recall(rpart.model$confusion.matrix, relevant=target.levels[1])
+r2 = recall(rpart.model$confusion.matrix, relevant=target.levels[2])
+recall_macro_avg = (r1 + r2) / 2
+recall_micro_avg = (r1 * n_high_quality/tot) + (r2 * n_low_quality/tot)
+
 F_meas(rpart.model$confusion.matrix, relevant=target.levels[1])
 F_meas(rpart.model$confusion.matrix, relevant=target.levels[2])
+
 #--------------------------- SVM -----------------------------------------------
 svm.model =  train(target ~ ., data=image_compression.reduced, method = "svmLinear",
                    metric = "ROC",
@@ -246,19 +270,36 @@ ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
   scale_x_discrete(labels=c("High quality","Low Quality")) +
   scale_y_discrete(labels=c("Low Quality","High quality"))
 
+folds = svm.model$resampledCM
+
+TP_sd = sd(folds$cell1)
+FP_sd = sd(folds$cell2)
+FN_sd = sd(folds$cell3)
+TN_sd = sd(folds$cell4)
+
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
          dim(image_compression.reduced)[1] == sum(svm.model$confusion.matrix)
+         sum(folds$cell1) == svm.model$confusion.matrix[1,1]
+         sum(folds$cell2) == svm.model$confusion.matrix[2,1]
+         sum(folds$cell3) == svm.model$confusion.matrix[1,2]
+         sum(folds$cell4) == svm.model$confusion.matrix[2,2]
        })
 
-target.levels = levels(image_compression.reduced$target)
-sum(diag(svm.model$confusion.matrix))/sum(svm.model$confusion.matrix)
-precision(svm.model$confusion.matrix, relevant=target.levels[1])
-precision(svm.model$confusion.matrix, relevant=target.levels[2])
-recall(svm.model$confusion.matrix, relevant=target.levels[1])
-recall(svm.model$confusion.matrix, relevant=target.levels[2])
+accuracy = sum(diag(svm.model$confusion.matrix))/sum(svm.model$confusion.matrix)
+
+p1 = precision(svm.model$confusion.matrix, relevant=target.levels[1])
+p2 = precision(svm.model$confusion.matrix, relevant=target.levels[2])
+precision_macro_avg = (p1 + p2) / 2
+precision_micro_avg = (p1 * n_high_quality/tot) + (p2 * n_low_quality/tot)
+
+r1 = recall(svm.model$confusion.matrix, relevant=target.levels[1])
+r2 = recall(svm.model$confusion.matrix, relevant=target.levels[2])
+recall_macro_avg = (r1 + r2) / 2
+recall_micro_avg = (r1 * n_high_quality/tot) + (r2 * n_low_quality/tot)
+
 F_meas(svm.model$confusion.matrix, relevant=target.levels[1])
-F_meas(svm.model$confusion.matrix, relevant=target.levels[2])
+F_meas(svm.model$confusion.matrix, relevant=target.levels[2]) 
 #--------------------------- Nnet ----------------------------------------------
 #ind = sample(2, nrow(image_compression.reduced), replace = TRUE, prob=c(0.7, 0.3))
 #trainset = image_compression.reduced[ind == 1,]
@@ -283,64 +324,66 @@ ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
   scale_x_discrete(labels=c("High quality","Low Quality")) +
   scale_y_discrete(labels=c("Low Quality","High quality"))
 
+best_tune = nnet.model$bestTune
+best_size = as.numeric(nnet.model$bestTune[1])
+best_decay = as.numeric(nnet.model$bestTune[2])
+folds = nnet.model$resampledCM[nnet.model$resampledCM$size == best_size 
+                        & nnet.model$resampledCM$decay == 1e-01, ]
+
+TP_sd = sd(folds$cell1)
+FP_sd = sd(folds$cell2)
+FN_sd = sd(folds$cell3)
+TN_sd = sd(folds$cell4)
+
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
          dim(image_compression.reduced)[1] == sum(nnet.model$confusion.matrix)
+         sum(folds$cell1) == nnet.model$confusion.matrix[1,1]
+         sum(folds$cell2) == nnet.model$confusion.matrix[2,1]
+         sum(folds$cell3) == nnet.model$confusion.matrix[1,2]
+         sum(folds$cell4) == nnet.model$confusion.matrix[2,2]
        })
 
-target.levels = levels(image_compression.reduced$target)
-sum(diag(nnet.model$confusion.matrix))/sum(nnet.model$confusion.matrix)
-precision(nnet.model$confusion.matrix, relevant=target.levels[1])
-precision(nnet.model$confusion.matrix, relevant=target.levels[2])
-recall(nnet.model$confusion.matrix, relevant=target.levels[1])
-recall(nnet.model$confusion.matrix, relevant=target.levels[2])
+accuracy = sum(diag(nnet.model$confusion.matrix))/sum(nnet.model$confusion.matrix)
+
+p1 = precision(nnet.model$confusion.matrix, relevant=target.levels[1])
+p2 = precision(nnet.model$confusion.matrix, relevant=target.levels[2])
+precision_macro_avg = (p1 + p2) / 2
+precision_micro_avg = (p1 * n_high_quality/tot) + (p2 * n_low_quality/tot)
+
+r1 = recall(nnet.model$confusion.matrix, relevant=target.levels[1])
+r2 = recall(nnet.model$confusion.matrix, relevant=target.levels[2])
+recall_macro_avg = (r1 + r2) / 2
+recall_micro_avg = (r1 * n_high_quality/tot) + (r2 * n_low_quality/tot)
+
 F_meas(nnet.model$confusion.matrix, relevant=target.levels[1])
 F_meas(nnet.model$confusion.matrix, relevant=target.levels[2])
 
 #-------------------------- measure 10-cross fold validation  ------------------
-
-#pred.rocr = prediction(c(svm.pred), testset$target) 
-#perf.rocr = performance(pred.rocr, measure = "auc", x.measure = "cutoff")
-#perf.tpr.rocr = performance(pred.rocr, "tpr","fpr")
-#opt.cut = function(perf, pred){
-#  cut.ind = mapply(FUN=function(x, y, p){
-#    d = (x - 0)^2 + (y-1)^2
-#    ind = which(d == min(d))
-#    c(sensitivity = y[[ind]], specificity = 1-x[[ind]],
-#      cutoff = p[[ind]])
-#  }, perf@x.values, perf@y.values, pred@cutoffs)
-#}
-#print(opt.cut(perf.tpr.rocr, pred.rocr))
-#acc.perf = performance(pred.rocr, measure = "acc")
-#plot(acc.perf)
-#ind = which.max( slot(acc.perf, "y.values")[[1]] )
-#acc = slot(acc.perf, "y.values")[[1]][ind]
-#cutoff = slot(acc.perf, "x.values")[[1]][ind]
-#print(c(accuracy= acc, cutoff = cutoff))
-
-svm.probs = predict(svm.model, testset[,! names(testset) %in% c("target")],
+svm.probs = predict(svm.model, image_compression.reduced[,! names(image_compression.reduced) %in% c("target")],
                     type = "prob")
-rpart.probs = predict(rpart.model, testset[,! names(testset) %in% c("target")],
+rpart.probs = predict(rpart.model, image_compression.reduced[,! names(image_compression.reduced) %in% c("target")],
                       type = "prob")
-nnet.probs = predict(nnet.model, testset[,! names(testset) %in% c("target")],
+nnet.probs = predict(nnet.model, image_compression.reduced[,! names(image_compression.reduced) %in% c("target")],
                      type = "prob")
 
-svm.ROC = roc(response = testset$target, predictor = svm.probs$high_quality,
-              levels = levels(testset[,c("target")]))
+svm.ROC = roc(response = image_compression.reduced$target, predictor = svm.probs$high_quality,
+              levels = levels(image_compression.reduced[,c("target")]))
 plot(svm.ROC,type="S", col="green")
 
-rpart.ROC = roc(response = testset[,c("target")],
+rpart.ROC = roc(response = image_compression.reduced[,c("target")],
                 predictor =rpart.probs$high_quality,
-                levels = levels(testset[,c("target")]))
+                levels = levels(image_compression.reduced[,c("target")]))
 plot(rpart.ROC, add=TRUE, col="blue")
 
-nnet.ROC = roc(response = testset$target, predictor = nnet.probs$high_quality,
-               levels = levels(testset[,c("target")]))
+nnet.ROC = roc(response = image_compression.reduced$target, predictor = nnet.probs$high_quality,
+               levels = levels(image_compression.reduced[,c("target")]))
 plot(nnet.ROC, add=TRUE, col="red")
 
 svm.ROC
 rpart.ROC
 nnet.ROC
+
 cv.values = resamples(list(svm=svm.model, rpart = rpart.model, nnet = nnet.model))
 summary(cv.values)
 dotplot(cv.values, metric = "ROC") 
