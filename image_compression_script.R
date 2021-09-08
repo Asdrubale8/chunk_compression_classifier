@@ -1,94 +1,16 @@
 #------------------- libraries -------------------------------------------------
 source("image_compression_lib.R");
 
-#detach("package:caret", unload = TRUE)
-
-ip = data.frame(installed.packages())$Package
-
-#install.packages("FactoMineR")
-if(! "testit" %in% ip){
-  install.packages("testit")
+installed_packages = data.frame(installed.packages())$Package
+needed_packages = c("testit", "FactoMineR", "factoextra", "ggplot2",
+                   "rpart", "rattle", "rpart.plot", "RColorBrewer", 
+                   "e1071", "rgl", "C50", "caret", "ROCR", "pROC")
+for(p in needed_packages){
+  if(! p %in% installed_packages){
+    install.packages(p)
+  }
+  library(p, character.only = TRUE)
 }
-library(testit)
-
-#install.packages("FactoMineR")
-if(! "FactoMineR" %in% ip){
-  install.packages("FactoMineR")
-}
-library(FactoMineR)
-
-#install.packages("factoextra")
-if(! "factoextra" %in% ip){
-  install.packages("factoextra")
-}
-library(factoextra)
-
-#install.packages("ggplot2")
-if(! "ggplot2" %in% ip){
-  install.packages("ggplot2")
-}
-library(ggplot2)
-
-#install.packages("rpart")
-if(! "rpart" %in% ip){
-  install.packages("rpart")
-}
-library(rpart)
-
-#install.packages("rattle")
-if(! "rattle" %in% ip){
-  install.packages("rattle")
-}
-library(rattle)
-
-#install.packages("rpart.plot")
-if(! "rpart.plot" %in% ip){
-  install.packages("rpart.plot")
-}
-library(rpart.plot)
-
-#install.packages("RColorBrewer")
-if(! "RColorBrewer" %in% ip){
-  install.packages("RColorBrewer")
-}
-library(RColorBrewer)
-
-#install.packages("e1071")
-if(! "e1071" %in% ip){
-  install.packages("e1071")
-}
-library(e1071)
-
-#install.packages("rgl")
-if(! "rgl" %in% ip){
-  install.packages("rgl")
-}
-library(rgl)
-
-#install.packages("C50")
-if(! "C50" %in% ip){
-  install.packages("C50")
-}
-library(C50)
-
-#install.packages("caret")
-if(! "caret" %in% ip){
-  install.packages("caret")
-}
-library(caret)
-
-#install.packages("ROCR")
-if(! "ROCR" %in% ip){
-  install.packages("ROCR")
-}
-library(ROCR)
-
-if(! "pROC" %in% ip){
-  install.packages("pROC")
-}
-library(pROC)
-
-#remove.packages("pROC")
 
 #---------------------------- import and preprocess ----------------------------
 image_compression = load("image_compression_labeled_total2.csv");
@@ -125,8 +47,6 @@ for(i in 1:3) {
 for(i in 4:6) {
   boxplot(image_compression.features[,i],
           main=names(image_compression.features)[i]) }
-boxplot(image_compression.features[,7],
-        main=names(image_compression.features)[7])
 
 par(mfrow=c(1,1))
 boxplot(Threshold ~ Quality, data = image_compression)
@@ -212,7 +132,7 @@ assert("La somma degli elementi della matrice non è uguale al numero
          sum(folds$cell2) == rpart.model$confusion.matrix[2,1]
          sum(folds$cell3) == rpart.model$confusion.matrix[1,2]
          sum(folds$cell4) == rpart.model$confusion.matrix[2,2]
-})
+       })
 
 accuracy = sum(diag(rpart.model$confusion.matrix))/sum(rpart.model$confusion.matrix)
 
@@ -322,7 +242,7 @@ best_tune = nnet.model$bestTune
 best_size = as.numeric(nnet.model$bestTune[1])
 best_decay = as.numeric(nnet.model$bestTune[2])
 folds = nnet.model$resampledCM[nnet.model$resampledCM$size == best_size 
-                        & nnet.model$resampledCM$decay == 1e-01, ]
+                               & nnet.model$resampledCM$decay == 1e-01, ]
 
 TP_sd = sd(folds$cell1)
 FP_sd = sd(folds$cell2)
