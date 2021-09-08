@@ -1,8 +1,15 @@
+#------------------- libraries -------------------------------------------------
 source("image_compression_lib.R");
 
 #detach("package:caret", unload = TRUE)
 
 ip = data.frame(installed.packages())$Package
+
+#install.packages("FactoMineR")
+if(! "testit" %in% ip){
+  install.packages("testit")
+}
+library(testit)
 
 #install.packages("FactoMineR")
 if(! "FactoMineR" %in% ip){
@@ -84,36 +91,38 @@ library(pROC)
 #remove.packages("pROC")
 
 #install.packages("neuralnet")
-#library(neuralnet)
+library(neuralnet)
 
 #install.packages("RSNNS")
-#library(RSNNS)
-
-# Domande
-# 1. La PCA va fatta solo sul training set ??
-# 2. Per confrontare i modelli va bene anche se hanno due librerie diverse ?
+library(RSNNS)
 
 #---------------------------- import and preprocess ----------------------------
-image_compression=load("image_compression_labeled_total2.csv");
-dim(image_compression)
-image_compression= unique(image_compression);
-dim(image_compression)
-image_compression=preprocess(image_compression);
-dim(image_compression)
-#---------------------------- visualization-------------------------------------
-sapply(image_compression,class)
-levels(image_compression$Quality)
-summary(image_compression)
-colSums(is.na(image_compression))
+image_compression = load("image_compression_labeled_total2.csv");
+image_compression = unique(image_compression);
+image_compression = preprocess(image_compression);
 
-image_compression.features=get_features(image_compression)
-image_compression.target=get_target(image_compression)
+image_compression.features = get_features(image_compression)
+image_compression.target = get_target(image_compression)
+image_compression = data.frame(image_compression.features,
+                               image_compression.target)
+names(image_compression)[names(image_compression)
+                         == 'image_compression.target'] <- 'target'
+#---------------------------- visualization-------------------------------------
+dim(image_compression.features)
+summary(image_compression)
+sapply(image_compression.features,class)
+levels(image_compression.target)
+colSums(is.na(image_compression))
 
 featurePlot(image_compression.features, image_compression.target,
             plot="density",
             scales=list(x=list(relation="free"),
                         y=list(relation="free")), auto.key=list(columns=3))
-pie(table(image_compression.target))
+
+x = data.frame(table(image_compression.target))
+pie(x$Freq, labels = x$Freq, main = "City pie chart",col = rainbow(length(x)))
+legend("topright", c("high_quality", "low_quality"), cex = 0.8,
+       fill = rainbow(length(x)))
 
 par(mfrow=c(1,3))
 for(i in 1:3) {
@@ -122,15 +131,19 @@ for(i in 1:3) {
 for(i in 4:6) {
   boxplot(image_compression.features[,i],
           main=names(image_compression.features)[i]) }
-boxplot(image_compression.features[,6],
-        main=names(image_compression.features)[6])
+boxplot(image_compression.features[,7],
+        main=names(image_compression.features)[7])
 
 par(mfrow=c(1,1))
 boxplot(Threshold ~ Quality, data = image_compression)
+boxplot(Mean ~ Quality, data = image_compression)
+boxplot(Median ~ Quality, data = image_compression)
+boxplot(Rms.contrast ~ Quality, data = image_compression)
+boxplot(M.contrast ~ Quality, data = image_compression)
+boxplot(Entropy ~ Quality, data = image_compression)
 
 featurePlot(x=image_compression.features, y=image_compression.target,
             plot="pairs", auto.key=list(columns=3))
-
 #---------------------------- PCA ----------------------------------------------
 image_compression.pca=PCA(image_compression.features, ncp=3, scale.unit = TRUE)
 
@@ -138,63 +151,69 @@ image_compression.pca.eig = get_eigenvalue(image_compression.pca)
 image_compression.pca.ind = get_pca_ind(image_compression.pca)
 image_compression.pca.var = get_pca_var(image_compression.pca)
 
+get_eigenvalue(image_compression.pca)
 fviz_eig(image_compression.pca, addlabels = TRUE, ylim = c(0, 50))
 image_compression.pca.var$coord
+
 fviz_pca_var(image_compression.pca, col.var = "black")
 
-fviz_pca_biplot(image_compression.pca,
-                select.var=list(contrib=6),ggtheme=theme_minimal())
-fviz_pca_ind(image_compression.pca, 
-             col.ind = "cos2", gradient.cols=c("#00AFBB","#E7B800","#FC4E07"),
-             repel=TRUE)
+#fviz_pca_biplot(image_compression.pca,
+#                select.var=list(contrib=6),ggtheme=theme_minimal())
+#fviz_pca_ind(image_compression.pca, 
+#            col.ind = "cos2", gradient.cols=c("#00AFBB","#E7B800","#FC4E07"),
+#             repel=TRUE)
+
+image_compression.pca$var$contrib
 
 image_compression.reduced = data.frame(image_compression.pca$ind$coord)
 image_compression.reduced$target = image_compression.target
-levels(image_compression.reduced$target) = c("high_quality","low_quality")
-
-featurePlot(x=image_compression.reduced, y=image_compression.reduced$target,
-            plot="pairs", auto.key=list(columns=3))
-
-image_compression.reduced.features = image_compression.reduced[,c('Dim.1','Dim.2','Dim.3')];
-image_compression.reduced.target = image_compression.reduced[,c('target')];
-
-featurePlot(x=image_compression.reduced.features, y=image_compression.reduced.target,
-            plot="pairs", auto.key=list(columns=3))
 
 # -------------------------- trainset/testset ----------------------------------
 allset = split.data(image_compression.reduced, p = 0.7)
 trainset = allset$train
 testset = allset$test
 
-#---------------------------- decision tree ------------------------------------
-decisionTree = rpart(target ~ ., data=trainset, method="class")
-fancyRpartPlot(decisionTree)
-testset$Prediction <- predict(decisionTree, testset, type = "class")
-confusion.matrix = table(testset$target, testset$Prediction)
-sum(diag(confusion.matrix))/sum(confusion.matrix) 
-plotcp(decisionTree)
-
-cp.decided = 0.023
-prunedDecisionTree = prune(decisionTree, cp=cp.decided)
-plotcp(prunedDecisionTree)
-fancyRpartPlot(prunedDecisionTree)
-prunedDecisionTree.pred <- predict(prunedDecisionTree, testset, type = "class")
-confusion.matrix = table(prunedDecisionTree.pred, testset$target)
-
-sum(diag(confusion.matrix))/sum(confusion.matrix)
-precision(confusion.matrix, relevant=levels(testset$target)[1])
-precision(confusion.matrix, relevant=levels(testset$target)[2])
-recall(confusion.matrix, relevant=levels(testset$target)[1])
-recall(confusion.matrix, relevant=levels(testset$target)[2])
-F_meas(confusion.matrix, relevant=levels(testset$target)[1])
-F_meas(confusion.matrix, relevant=levels(testset$target)[2])
-
-#--------------------------- SVM -----------------------------------------------
-control = trainControl(method = "repeatedcv", number = 10,repeats = 3,
+control = trainControl(method = "repeatedcv", number = 10,
                        classProbs = TRUE, summaryFunction = twoClassSummary)
-svm.model =  train(target ~ ., data=trainset, method = "svmLinear",
+
+#---------------------------- decision tree ------------------------------------
+#decisionTree = rpart(target ~ ., data=trainset, method="class")
+#plotcp(decisionTree)
+#cp.decided = 0.023
+#prunedDecisionTree = prune(decisionTree, cp=cp.decided)
+#plotcp(prunedDecisionTree)
+#fancyRpartPlot(prunedDecisionTree)
+
+rpart.model = train(target ~ ., data=image_compression.reduced, method = "rpart", metric = "ROC",
+                    trControl = control)
+fancyRpartPlot(rpart.model$finalModel)
+
+rpart.model$confusion.matrix = confusionMatrix(rpart.model, norm = "none")$table
+plt <- as.data.frame(rpart.model$confusion.matrix)
+plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
+  geom_tile() + geom_text(aes(label=Freq)) +
+  scale_fill_gradient(low="white", high="#009194") +
+  labs(x = "Reference",y = "Prediction") +
+  scale_x_discrete(labels=c("High quality","Low Quality")) +
+  scale_y_discrete(labels=c("Low Quality","High quality"))
+
+assert("La somma degli elementi della matrice non è uguale al numero
+       di individui", {
+         dim(image_compression.reduced)[1] == sum(rpart.model$confusion.matrix)
+})
+
+target.levels = levels(image_compression.reduced$target)
+accuracy = sum(diag(rpart.model$confusion.matrix))/sum(rpart.model$confusion.matrix)
+precision(rpart.model$confusion.matrix, relevant=target.levels[1])
+precision(rpart.model$confusion.matrix, relevant=target.levels[2])
+recall(rpart.model$confusion.matrix, relevant=target.levels[1])
+recall(rpart.model$confusion.matrix, relevant=target.levels[2])
+F_meas(rpart.model$confusion.matrix, relevant=target.levels[1])
+F_meas(rpart.model$confusion.matrix, relevant=target.levels[2])
+#--------------------------- SVM -----------------------------------------------
+svm.model =  train(target ~ ., data=image_compression.reduced, method = "svmLinear",
                    metric = "ROC",
-                   tuneGrid = expand.grid(C = seq(0, 2, length = 20)),
                    trControl = control)
 plot(svm.model)
 print(svm.model)
@@ -204,29 +223,42 @@ coefs <- svm.model$finalModel@coef[[1]]
 mat <- svm.model$finalModel@xmatrix[[1]]
 w <- coefs %*% mat
 detalization <- 100                                                                                                                                                                 
-grid <- expand.grid(seq(from=min(trainset$Dim.1),to=max(trainset$Dim.1),
+grid <- expand.grid(seq(from=min(image_compression.reduced$Dim.1),to=max(image_compression.reduced$Dim.1),
                         length.out=detalization),                                                                                                         
-                    seq(from=min(trainset$Dim.2),to=max(trainset$Dim.2),
+                    seq(from=min(image_compression.reduced$Dim.2),to=max(image_compression.reduced$Dim.2),
                         length.out=detalization))                                                                                                         
 z <- (svm.model$finalModel@b - w[1,1]*grid[,1] - w[1,2]*grid[,2]) / w[1,3]
 plot3d(grid[,1],grid[,2],z)  # this will draw plane.
-points3d(trainset$Dim.1[which(trainset$target=='low_quality')],
-         trainset$Dim.2[which(trainset$target=='low_quality')],
-         trainset$Dim.3[which(trainset$target=='low_quality')], col='red')
-points3d(trainset$Dim.1[which(trainset$target=='high_quality')],
-         trainset$Dim.2[which(trainset$target=='high_quality')],
-         trainset$Dim.3[which(trainset$target=='high_quality')], col='blue')
+points3d(image_compression.reduced$Dim.1[which(image_compression.reduced$target=='low_quality')],
+         image_compression.reduced$Dim.2[which(image_compression.reduced$target=='low_quality')],
+         image_compression.reduced$Dim.3[which(image_compression.reduced$target=='low_quality')], col='red')
+points3d(image_compression.reduced$Dim.1[which(image_compression.reduced$target=='high_quality')],
+         image_compression.reduced$Dim.2[which(image_compression.reduced$target=='high_quality')],
+         image_compression.reduced$Dim.3[which(image_compression.reduced$target=='high_quality')], col='blue')
 
-svm.pred = predict(svm.model, testset)
-confusion.matrix = table(svm.pred, testset$target)
-sum(diag(confusion.matrix))/sum(confusion.matrix)
-precision(confusion.matrix, relevant=levels(testset$target)[1])
-precision(confusion.matrix, relevant=levels(testset$target)[2])
-recall(confusion.matrix, relevant=levels(testset$target)[1])
-recall(confusion.matrix, relevant=levels(testset$target)[2])
-F_meas(confusion.matrix, relevant=levels(testset$target)[1])
-F_meas(confusion.matrix, relevant=levels(testset$target)[2])
+svm.model$confusion.matrix = confusionMatrix(svm.model, norm = "none")$table
+plt <- as.data.frame(svm.model$confusion.matrix)
+plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
+  geom_tile() + geom_text(aes(label=Freq)) +
+  scale_fill_gradient(low="white", high="#009194") +
+  labs(x = "Reference",y = "Prediction") +
+  scale_x_discrete(labels=c("High quality","Low Quality")) +
+  scale_y_discrete(labels=c("Low Quality","High quality"))
 
+assert("La somma degli elementi della matrice non è uguale al numero
+       di individui", {
+         dim(image_compression.reduced)[1] == sum(svm.model$confusion.matrix)
+       })
+
+target.levels = levels(image_compression.reduced$target)
+sum(diag(svm.model$confusion.matrix))/sum(svm.model$confusion.matrix)
+precision(svm.model$confusion.matrix, relevant=target.levels[1])
+precision(svm.model$confusion.matrix, relevant=target.levels[2])
+recall(svm.model$confusion.matrix, relevant=target.levels[1])
+recall(svm.model$confusion.matrix, relevant=target.levels[2])
+F_meas(svm.model$confusion.matrix, relevant=target.levels[1])
+F_meas(svm.model$confusion.matrix, relevant=target.levels[2])
 #--------------------------- Nnet ----------------------------------------------
 #ind = sample(2, nrow(image_compression.reduced), replace = TRUE, prob=c(0.7, 0.3))
 #trainset = image_compression.reduced[ind == 1,]
@@ -239,10 +271,31 @@ F_meas(confusion.matrix, relevant=levels(testset$target)[2])
 #net.prediction = c("low_quality", "high_quality")[apply(net.predict, 1, which.max)]
 #predict.table = table(testset$target, net.prediction)
 
-control = trainControl(method = "cv", number = 10, classProbs = TRUE, summaryFunction = twoClassSummary)
-nnet.model = train(target ~ ., data=trainset, method = "nnet", metric = "ROC", trControl = control)
+nnet.model = train(target ~ ., data=image_compression.reduced, method = "nnet", metric = "ROC", trControl = control)
+
 nnet.model$confusion.matrix = confusionMatrix(nnet.model, norm = "none")$table
-nnet.model$confusion.matrix
+plt <- as.data.frame(nnet.model$confusion.matrix)
+plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
+  geom_tile() + geom_text(aes(label=Freq)) +
+  scale_fill_gradient(low="white", high="#009194") +
+  labs(x = "Reference",y = "Prediction") +
+  scale_x_discrete(labels=c("High quality","Low Quality")) +
+  scale_y_discrete(labels=c("Low Quality","High quality"))
+
+assert("La somma degli elementi della matrice non è uguale al numero
+       di individui", {
+         dim(image_compression.reduced)[1] == sum(nnet.model$confusion.matrix)
+       })
+
+target.levels = levels(image_compression.reduced$target)
+sum(diag(nnet.model$confusion.matrix))/sum(nnet.model$confusion.matrix)
+precision(nnet.model$confusion.matrix, relevant=target.levels[1])
+precision(nnet.model$confusion.matrix, relevant=target.levels[2])
+recall(nnet.model$confusion.matrix, relevant=target.levels[1])
+recall(nnet.model$confusion.matrix, relevant=target.levels[2])
+F_meas(nnet.model$confusion.matrix, relevant=target.levels[1])
+F_meas(nnet.model$confusion.matrix, relevant=target.levels[2])
 
 #-------------------------- measure 10-cross fold validation  ------------------
 
@@ -265,17 +318,6 @@ nnet.model$confusion.matrix
 #cutoff = slot(acc.perf, "x.values")[[1]][ind]
 #print(c(accuracy= acc, cutoff = cutoff))
 
-control = trainControl(method = "cv", number = 10,
-                       classProbs = TRUE, summaryFunction = twoClassSummary)
-rpart.model = train(target ~ ., data=trainset, method = "rpart", metric = "ROC",
-                    trControl = control)
-fancyRpartPlot(rpart.model$finalModel)
-rpart.model$confusion.matrix = confusionMatrix(rpart.model, norm = "none")$table
-
-svm.model =  train(target ~ ., data=trainset, method = "svmLinear",
-                   metric = "ROC", trControl = control)
-svm.model$confusion.matrix = confusionMatrix(svm.model, norm = "none")$table
-
 svm.probs = predict(svm.model, testset[,! names(testset) %in% c("target")],
                     type = "prob")
 rpart.probs = predict(rpart.model, testset[,! names(testset) %in% c("target")],
@@ -293,7 +335,7 @@ rpart.ROC = roc(response = testset[,c("target")],
 plot(rpart.ROC, add=TRUE, col="blue")
 
 nnet.ROC = roc(response = testset$target, predictor = nnet.probs$high_quality,
-              levels = levels(testset[,c("target")]))
+               levels = levels(testset[,c("target")]))
 plot(nnet.ROC, add=TRUE, col="red")
 
 svm.ROC
@@ -305,58 +347,3 @@ dotplot(cv.values, metric = "ROC")
 bwplot(cv.values, layout = c(3, 1))
 splom(cv.values,metric="ROC")
 cv.values$timings # get the train times for both models
-
-rpart.model$confusion.matrix
-plt <- as.data.frame(rpart.model$confusion.matrix)
-plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
-ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
-  geom_tile() + geom_text(aes(label=Freq)) +
-  scale_fill_gradient(low="white", high="#009194") +
-  labs(x = "Reference",y = "Prediction") +
-  scale_x_discrete(labels=c("High quality","Low Quality")) +
-  scale_y_discrete(labels=c("Low Quality","High quality"))
-
-sum(diag(rpart.model$confusion.matrix))/sum(rpart.model$confusion.matrix)
-precision(rpart.model$confusion.matrix, relevant=levels(trainset$target)[1])
-precision(rpart.model$confusion.matrix, relevant=levels(trainset$target)[2])
-recall(rpart.model$confusion.matrix, relevant=levels(trainset$target)[1])
-recall(rpart.model$confusion.matrix, relevant=levels(trainset$target)[2])
-F_meas(rpart.model$confusion.matrix, relevant=levels(trainset$target)[1])
-F_meas(rpart.model$confusion.matrix, relevant=levels(trainset$target)[2])
-
-svm.model$confusion.matrix
-plt <- as.data.frame(svm.model$confusion.matrix)
-plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
-ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
-  geom_tile() + geom_text(aes(label=Freq)) +
-  scale_fill_gradient(low="white", high="#009194") +
-  labs(x = "Reference",y = "Prediction") +
-  scale_x_discrete(labels=c("High quality","Low Quality")) +
-  scale_y_discrete(labels=c("Low Quality","High quality"))
-
-sum(diag(svm.model$confusion.matrix))/sum(svm.model$confusion.matrix)
-precision(svm.model$confusion.matrix, relevant=levels(trainset$target)[1])
-precision(svm.model$confusion.matrix, relevant=levels(trainset$target)[2])
-recall(svm.model$confusion.matrix, relevant=levels(trainset$target)[1])
-recall(svm.model$confusion.matrix, relevant=levels(trainset$target)[2])
-F_meas(svm.model$confusion.matrix, relevant=levels(trainset$target)[1])
-F_meas(svm.model$confusion.matrix, relevant=levels(trainset$target)[2])
-
-nnet.model$confusion.matrix
-plt <- as.data.frame(nnet.model$confusion.matrix)
-plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
-ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
-  geom_tile() + geom_text(aes(label=Freq)) +
-  scale_fill_gradient(low="white", high="#009194") +
-  labs(x = "Reference",y = "Prediction") +
-  scale_x_discrete(labels=c("High quality","Low Quality")) +
-  scale_y_discrete(labels=c("Low Quality","High quality"))
-
-sum(diag(nnet.model$confusion.matrix))/sum(nnet.model$confusion.matrix)
-precision(nnet.model$confusion.matrix, relevant=levels(trainset$target)[1])
-precision(nnet.model$confusion.matrix, relevant=levels(trainset$target)[2])
-recall(nnet.model$confusion.matrix, relevant=levels(trainset$target)[1])
-recall(nnet.model$confusion.matrix, relevant=levels(trainset$target)[2])
-F_meas(nnet.model$confusion.matrix, relevant=levels(trainset$target)[1])
-F_meas(nnet.model$confusion.matrix, relevant=levels(trainset$target)[2])
-
