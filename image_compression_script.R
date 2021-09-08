@@ -1,10 +1,10 @@
-#------------------- libraries -------------------------------------------------
+#---------------------------- libraries -------------------------------------------------
 source("image_compression_lib.R");
 
 installed_packages = data.frame(installed.packages())$Package
 needed_packages = c("testit", "FactoMineR", "factoextra", "ggplot2",
-                   "rpart", "rattle", "rpart.plot", "RColorBrewer", 
-                   "e1071", "rgl", "C50", "caret", "ROCR", "pROC")
+                    "rpart", "rattle", "rpart.plot", "RColorBrewer", 
+                    "e1071", "rgl", "C50", "caret", "ROCR", "pROC")
 for(p in needed_packages){
   if(! p %in% installed_packages){
     install.packages(p)
@@ -49,12 +49,12 @@ for(i in 4:6) {
           main=names(image_compression.features)[i]) }
 
 par(mfrow=c(1,1))
-boxplot(Threshold ~ Quality, data = image_compression)
-boxplot(Mean ~ Quality, data = image_compression)
-boxplot(Median ~ Quality, data = image_compression)
-boxplot(Rms.contrast ~ Quality, data = image_compression)
-boxplot(M.contrast ~ Quality, data = image_compression)
-boxplot(Entropy ~ Quality, data = image_compression)
+boxplot(Threshold ~ target, data = image_compression)
+boxplot(Mean ~ target, data = image_compression)
+boxplot(Median ~ target, data = image_compression)
+boxplot(Rms.contrast ~ target, data = image_compression)
+boxplot(M.contrast ~ target, data = image_compression)
+boxplot(Entropy ~ target, data = image_compression)
 
 featurePlot(x=image_compression.features, y=image_compression.target,
             plot="pairs", auto.key=list(columns=3))
@@ -87,7 +87,7 @@ n_high_quality = as.numeric(table(image_compression.reduced$target)[1])
 n_low_quality = as.numeric(table(image_compression.reduced$target)[2])
 n_individuals = n_high_quality + n_low_quality
 
-# -------------------------- trainset/testset ----------------------------------
+# --------------------------- trainset/testset ----------------------------------
 allset = split.data(image_compression.reduced, p = 0.7)
 trainset = allset$train
 testset = allset$test
@@ -108,14 +108,7 @@ rpart.model = train(target ~ ., data=image_compression.reduced, method = "rpart"
 fancyRpartPlot(rpart.model$finalModel)
 
 rpart.model$confusion.matrix = confusionMatrix(rpart.model, norm = "none")$table
-plt <- as.data.frame(rpart.model$confusion.matrix)
-plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
-ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
-  geom_tile() + geom_text(aes(label=Freq)) +
-  scale_fill_gradient(low="white", high="#009194") +
-  labs(x = "Reference",y = "Prediction") +
-  scale_x_discrete(labels=c("High quality","Low Quality")) +
-  scale_y_discrete(labels=c("Low Quality","High quality"))
+plot_confusion_matrix(rpart.model$confusion.matrix)
 
 best_tune = as.numeric(rpart.model$bestTune)
 folds = rpart.model$resampledCM[rpart.model$resampledCM$cp == best_tune, ]
@@ -149,7 +142,7 @@ recall_micro_avg = (r1 * n_high_quality/tot) + (r2 * n_low_quality/tot)
 F_meas(rpart.model$confusion.matrix, relevant=target.levels[1])
 F_meas(rpart.model$confusion.matrix, relevant=target.levels[2])
 
-#--------------------------- SVM -----------------------------------------------
+#---------------------------- SVM -----------------------------------------------
 svm.model =  train(target ~ ., data=image_compression.reduced, method = "svmLinear",
                    metric = "ROC",
                    trControl = control)
@@ -157,33 +150,10 @@ plot(svm.model)
 print(svm.model)
 print(svm.model$finalModel@param)
 
-coefs <- svm.model$finalModel@coef[[1]]
-mat <- svm.model$finalModel@xmatrix[[1]]
-w <- coefs %*% mat
-detalization <- 100                                                                                                                                                                 
-grid <- expand.grid(seq(from=min(image_compression.reduced$Dim.1),to=max(image_compression.reduced$Dim.1),
-                        length.out=detalization),                                                                                                         
-                    seq(from=min(image_compression.reduced$Dim.2),to=max(image_compression.reduced$Dim.2),
-                        length.out=detalization))                                                                                                         
-z <- (svm.model$finalModel@b - w[1,1]*grid[,1] - w[1,2]*grid[,2]) / w[1,3]
-plot3d(grid[,1],grid[,2],z)  # this will draw plane.
-points3d(image_compression.reduced$Dim.1[which(image_compression.reduced$target=='low_quality')],
-         image_compression.reduced$Dim.2[which(image_compression.reduced$target=='low_quality')],
-         image_compression.reduced$Dim.3[which(image_compression.reduced$target=='low_quality')], col='red')
-points3d(image_compression.reduced$Dim.1[which(image_compression.reduced$target=='high_quality')],
-         image_compression.reduced$Dim.2[which(image_compression.reduced$target=='high_quality')],
-         image_compression.reduced$Dim.3[which(image_compression.reduced$target=='high_quality')], col='blue')
+plot_svm_3d_graph(svm.model)
 
 svm.model$confusion.matrix = confusionMatrix(svm.model, norm = "none")$table
-plt <- as.data.frame(svm.model$confusion.matrix)
-plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
-ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
-  geom_tile() + geom_text(aes(label=Freq)) +
-  scale_fill_gradient(low="white", high="#009194") +
-  labs(x = "Reference",y = "Prediction") +
-  scale_x_discrete(labels=c("High quality","Low Quality")) +
-  scale_y_discrete(labels=c("Low Quality","High quality"))
-
+plot_confusion_matrix(svm.model$confusion.matrix)
 folds = svm.model$resampledCM
 
 TP_sd = sd(folds$cell1)
@@ -214,7 +184,7 @@ recall_micro_avg = (r1 * n_high_quality/tot) + (r2 * n_low_quality/tot)
 
 F_meas(svm.model$confusion.matrix, relevant=target.levels[1])
 F_meas(svm.model$confusion.matrix, relevant=target.levels[2]) 
-#--------------------------- Nnet ----------------------------------------------
+#---------------------------- Nnet ----------------------------------------------
 #ind = sample(2, nrow(image_compression.reduced), replace = TRUE, prob=c(0.7, 0.3))
 #trainset = image_compression.reduced[ind == 1,]
 #testset = image_compression.reduced[ind == 2,]
@@ -229,14 +199,7 @@ F_meas(svm.model$confusion.matrix, relevant=target.levels[2])
 nnet.model = train(target ~ ., data=image_compression.reduced, method = "nnet", metric = "ROC", trControl = control)
 
 nnet.model$confusion.matrix = confusionMatrix(nnet.model, norm = "none")$table
-plt <- as.data.frame(nnet.model$confusion.matrix)
-plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
-ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
-  geom_tile() + geom_text(aes(label=Freq)) +
-  scale_fill_gradient(low="white", high="#009194") +
-  labs(x = "Reference",y = "Prediction") +
-  scale_x_discrete(labels=c("High quality","Low Quality")) +
-  scale_y_discrete(labels=c("Low Quality","High quality"))
+plot_confusion_matrix(nnet.model$confusion.matrix)
 
 best_tune = nnet.model$bestTune
 best_size = as.numeric(nnet.model$bestTune[1])
@@ -273,7 +236,7 @@ recall_micro_avg = (r1 * n_high_quality/tot) + (r2 * n_low_quality/tot)
 F_meas(nnet.model$confusion.matrix, relevant=target.levels[1])
 F_meas(nnet.model$confusion.matrix, relevant=target.levels[2])
 
-#-------------------------- measure 10-cross fold validation  ------------------
+#---------------------------- measure 10-cross fold validation  ------------------
 svm.probs = predict(svm.model, image_compression.reduced[,! names(image_compression.reduced) %in% c("target")],
                     type = "prob")
 rpart.probs = predict(rpart.model, image_compression.reduced[,! names(image_compression.reduced) %in% c("target")],
@@ -304,3 +267,4 @@ dotplot(cv.values, metric = "ROC")
 bwplot(cv.values, layout = c(3, 1))
 splom(cv.values,metric="ROC")
 cv.values$timings # get the train times for both models
+
