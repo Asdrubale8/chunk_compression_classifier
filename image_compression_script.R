@@ -90,7 +90,9 @@ n_high_quality = as.numeric(table(image_compression.reduced$target)[1])
 n_low_quality = as.numeric(table(image_compression.reduced$target)[2])
 n_individuals = n_high_quality + n_low_quality
 
-control = trainControl(method = "repeatedcv", number = 10,  repeats = 10,
+reps = 10
+
+control = trainControl(method = "repeatedcv", number = 10,  repeats = reps,
                        classProbs = TRUE, summaryFunction = twoClassSummary)
 
 #---------------------------- decision tree ------------------------------------
@@ -111,22 +113,28 @@ plot_confusion_matrix(rpart.model$confusion.matrix)
 best_tune = as.numeric(rpart.model$bestTune)
 folds = rpart.model$resampledCM[rpart.model$resampledCM$cp == best_tune, ]
 
-repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds)
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
 FP_sd = sd(repeats_confusion_matrixes$cell2)
 FN_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
-rpart.model$confusion.matrix = round(rpart.model$confusion.matrix/10)
+rpart.model$confusion.matrix = round(rpart.model$confusion.matrix/reps)
 
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
-  dim(image_compression.reduced)[1] == sum(rpart.model$confusion.matrix)
-})
+         dim(image_compression.reduced)[1] == sum(rpart.model$confusion.matrix)
+       })
 
 accuracy_mean = sum(diag(rpart.model$confusion.matrix))/sum(rpart.model$confusion.matrix)
-accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, accuracy_mean)
+accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, accuracy_mean, reps)
+
+# Calculate the mean and standard error
+l.model <- lm(cell1 ~ 1, repeats_confusion_matrixes)
+
+# Calculate the confidence interval
+confint(l.model, level=0.95)
 
 p1 = precision(rpart.model$confusion.matrix, relevant=target.levels[1])
 p2 = precision(rpart.model$confusion.matrix, relevant=target.levels[2])
@@ -155,22 +163,22 @@ svm.model$confusion.matrix = confusionMatrix(svm.model, norm = "none")$table
 plot_confusion_matrix(svm.model$confusion.matrix)
 folds = svm.model$resampledCM
 
-repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds)
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
 FP_sd = sd(repeats_confusion_matrixes$cell2)
 FN_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
-svm.model$confusion.matrix = round(svm.model$confusion.matrix/10)
+svm.model$confusion.matrix = round(svm.model$confusion.matrix/reps)
 
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
-   dim(image_compression.reduced)[1] == sum(svm.model$confusion.matrix)
-})
+         dim(image_compression.reduced)[1] == sum(svm.model$confusion.matrix)
+       })
 
 accuracy_mean = sum(diag(svm.model$confusion.matrix))/sum(svm.model$confusion.matrix)
-accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, accuracy_mean)
+accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, accuracy_mean, reps)
 
 
 p1 = precision(svm.model$confusion.matrix, relevant=target.levels[1])
@@ -208,22 +216,22 @@ best_decay = as.numeric(nnet.model$bestTune[2])
 folds = nnet.model$resampledCM[nnet.model$resampledCM$size == best_size 
                                & nnet.model$resampledCM$decay == best_decay, ]
 
-repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds)
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
 FP_sd = sd(repeats_confusion_matrixes$cell2)
 FN_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
-nnet.model$confusion.matrix = round(nnet.model$confusion.matrix/10)
+nnet.model$confusion.matrix = round(nnet.model$confusion.matrix/reps)
 
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
-   dim(image_compression.reduced)[1] == sum(nnet.model$confusion.matrix)
-})
+         dim(image_compression.reduced)[1] == sum(nnet.model$confusion.matrix)
+       })
 
 accuracy_mean = sum(diag(nnet.model$confusion.matrix))/sum(nnet.model$confusion.matrix)
-accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, accuracy_mean)
+accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, accuracy_mean, reps)
 
 p1 = precision(nnet.model$confusion.matrix, relevant=target.levels[1])
 p2 = precision(nnet.model$confusion.matrix, relevant=target.levels[2])
