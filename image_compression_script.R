@@ -92,7 +92,7 @@ allset = split.data(image_compression.reduced, p = 0.7)
 trainset = allset$train
 testset = allset$test
 
-control = trainControl(method = "cv", number = 10, returnResamp = "final",
+control = trainControl(method = "repeatedcv", number = 10,  repeats = 10,
                        classProbs = TRUE, summaryFunction = twoClassSummary)
 
 #---------------------------- decision tree ------------------------------------
@@ -113,10 +113,14 @@ plot_confusion_matrix(rpart.model$confusion.matrix)
 best_tune = as.numeric(rpart.model$bestTune)
 folds = rpart.model$resampledCM[rpart.model$resampledCM$cp == best_tune, ]
 
-TP_sd = sd(folds$cell1)
-FP_sd = sd(folds$cell2)
-FN_sd = sd(folds$cell3)
-TN_sd = sd(folds$cell4)
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+rpart.model$confusion.matrix = round(rpart.model$confusion.matrix/10)
 
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
@@ -132,12 +136,12 @@ accuracy = sum(diag(rpart.model$confusion.matrix))/sum(rpart.model$confusion.mat
 p1 = precision(rpart.model$confusion.matrix, relevant=target.levels[1])
 p2 = precision(rpart.model$confusion.matrix, relevant=target.levels[2])
 precision_macro_avg = (p1 + p2) / 2
-precision_micro_avg = (p1 * n_high_quality/tot) + (p2 * n_low_quality/tot)
+precision_micro_avg = (p1 * n_high_quality/n_individuals) + (p2 * n_low_quality/n_individuals)
 
 r1 = recall(rpart.model$confusion.matrix, relevant=target.levels[1])
 r2 = recall(rpart.model$confusion.matrix, relevant=target.levels[2])
 recall_macro_avg = (r1 + r2) / 2
-recall_micro_avg = (r1 * n_high_quality/tot) + (r2 * n_low_quality/tot)
+recall_micro_avg = (r1 * n_high_quality/n_individuals) + (r2 * n_low_quality/n_individuals)
 
 F_meas(rpart.model$confusion.matrix, relevant=target.levels[1])
 F_meas(rpart.model$confusion.matrix, relevant=target.levels[2])
@@ -156,10 +160,14 @@ svm.model$confusion.matrix = confusionMatrix(svm.model, norm = "none")$table
 plot_confusion_matrix(svm.model$confusion.matrix)
 folds = svm.model$resampledCM
 
-TP_sd = sd(folds$cell1)
-FP_sd = sd(folds$cell2)
-FN_sd = sd(folds$cell3)
-TN_sd = sd(folds$cell4)
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+svm.model$confusion.matrix = round(svm.model$confusion.matrix/10)
 
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
@@ -175,12 +183,12 @@ accuracy = sum(diag(svm.model$confusion.matrix))/sum(svm.model$confusion.matrix)
 p1 = precision(svm.model$confusion.matrix, relevant=target.levels[1])
 p2 = precision(svm.model$confusion.matrix, relevant=target.levels[2])
 precision_macro_avg = (p1 + p2) / 2
-precision_micro_avg = (p1 * n_high_quality/tot) + (p2 * n_low_quality/tot)
+precision_micro_avg = (p1 * n_high_quality/n_individuals) + (p2 * n_low_quality/n_individuals)
 
 r1 = recall(svm.model$confusion.matrix, relevant=target.levels[1])
 r2 = recall(svm.model$confusion.matrix, relevant=target.levels[2])
 recall_macro_avg = (r1 + r2) / 2
-recall_micro_avg = (r1 * n_high_quality/tot) + (r2 * n_low_quality/tot)
+recall_micro_avg = (r1 * n_high_quality/n_individuals) + (r2 * n_low_quality/n_individuals)
 
 F_meas(svm.model$confusion.matrix, relevant=target.levels[1])
 F_meas(svm.model$confusion.matrix, relevant=target.levels[2]) 
@@ -207,10 +215,14 @@ best_decay = as.numeric(nnet.model$bestTune[2])
 folds = nnet.model$resampledCM[nnet.model$resampledCM$size == best_size 
                                & nnet.model$resampledCM$decay == best_decay, ]
 
-TP_sd = sd(folds$cell1)
-FP_sd = sd(folds$cell2)
-FN_sd = sd(folds$cell3)
-TN_sd = sd(folds$cell4)
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+nnet.model$confusion.matrix = round(nnet.model$confusion.matrix/10)
 
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
@@ -226,12 +238,12 @@ accuracy = sum(diag(nnet.model$confusion.matrix))/sum(nnet.model$confusion.matri
 p1 = precision(nnet.model$confusion.matrix, relevant=target.levels[1])
 p2 = precision(nnet.model$confusion.matrix, relevant=target.levels[2])
 precision_macro_avg = (p1 + p2) / 2
-precision_micro_avg = (p1 * n_high_quality/tot) + (p2 * n_low_quality/tot)
+precision_micro_avg = (p1 * n_high_quality/n_individuals) + (p2 * n_low_quality/n_individuals)
 
 r1 = recall(nnet.model$confusion.matrix, relevant=target.levels[1])
 r2 = recall(nnet.model$confusion.matrix, relevant=target.levels[2])
 recall_macro_avg = (r1 + r2) / 2
-recall_micro_avg = (r1 * n_high_quality/tot) + (r2 * n_low_quality/tot)
+recall_micro_avg = (r1 * n_high_quality/n_individuals) + (r2 * n_low_quality/n_individuals)
 
 F_meas(nnet.model$confusion.matrix, relevant=target.levels[1])
 F_meas(nnet.model$confusion.matrix, relevant=target.levels[2])
@@ -267,4 +279,3 @@ dotplot(cv.values, metric = "ROC")
 bwplot(cv.values, layout = c(3, 1))
 splom(cv.values,metric="ROC")
 cv.values$timings # get the train times for both models
-
