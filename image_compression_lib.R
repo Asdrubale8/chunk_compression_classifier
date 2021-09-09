@@ -97,3 +97,14 @@ get_confusion_matrixes_stratified_10_fold <- function(folds) {
   }
   repeats_confusion_matrixes
 }
+
+get_accuracy_sd <- function(repeats_confusion_matrixes, accuracy_mean){
+  accuracies = numeric(10)
+  for(i in 1:10) {
+    confusion_matrix = repeats_confusion_matrixes[i, ]
+    accuracies[i] = (confusion_matrix$cell1 + 
+                       confusion_matrix$cell4)/sum(confusion_matrix)
+  }
+  sd(accuracies)
+}
+
