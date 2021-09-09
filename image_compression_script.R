@@ -92,7 +92,8 @@ n_individuals = n_high_quality + n_low_quality
 
 reps = 10
 
-control = trainControl(method = "repeatedcv", number = 10,  repeats = reps,
+control = trainControl(method = "repeatedcv", number = 10,  repeats = reps,returnData = TRUE,
+                       returnResamp = "all", savePredictions = TRUE,
                        classProbs = TRUE, summaryFunction = twoClassSummary)
 
 #---------------------------- decision tree ------------------------------------
@@ -108,7 +109,6 @@ rpart.model = train(target ~ ., data=image_compression.reduced, method = "rpart"
 fancyRpartPlot(rpart.model$finalModel)
 
 rpart.model$confusion.matrix = confusionMatrix(rpart.model, norm = "none")$table
-plot_confusion_matrix(rpart.model$confusion.matrix)
 
 best_tune = as.numeric(rpart.model$bestTune)
 folds = rpart.model$resampledCM[rpart.model$resampledCM$cp == best_tune, ]
@@ -121,20 +121,21 @@ FN_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 rpart.model$confusion.matrix = round(rpart.model$confusion.matrix/reps)
+rpart.model$confusion.matrix.sd = rpart.model$confusion.matrix
+rpart.model$confusion.matrix.sd[1,1] = TP_sd
+rpart.model$confusion.matrix.sd[2,1] = FP_sd
+rpart.model$confusion.matrix.sd[1,2] = FN_sd
+rpart.model$confusion.matrix.sd[2,2] = TN_sd
 
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
          dim(image_compression.reduced)[1] == sum(rpart.model$confusion.matrix)
        })
+plot_confusion_matrix(rpart.model$confusion.matrix)
+plot_confusion_matrix.sd(rpart.model$confusion.matrix.sd)
 
 accuracy_mean = sum(diag(rpart.model$confusion.matrix))/sum(rpart.model$confusion.matrix)
-accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, accuracy_mean, reps)
-
-# Calculate the mean and standard error
-l.model <- lm(cell1 ~ 1, repeats_confusion_matrixes)
-
-# Calculate the confidence interval
-confint(l.model, level=0.95)
+accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, reps)
 
 p1 = precision(rpart.model$confusion.matrix, relevant=target.levels[1])
 p2 = precision(rpart.model$confusion.matrix, relevant=target.levels[2])
@@ -146,8 +147,9 @@ r2 = recall(rpart.model$confusion.matrix, relevant=target.levels[2])
 recall_macro_avg = (r1 + r2) / 2
 recall_micro_avg = (r1 * n_high_quality/n_individuals) + (r2 * n_low_quality/n_individuals)
 
-F_meas(rpart.model$confusion.matrix, relevant=target.levels[1])
-F_meas(rpart.model$confusion.matrix, relevant=target.levels[2])
+F_meas(rpart.model$confusion.matrix, beta = 0.5)
+F_meas(rpart.model$confusion.matrix, beta = 1)
+F_meas(rpart.model$confusion.matrix, beta = 2)
 
 #---------------------------- SVM -----------------------------------------------
 svm.model =  train(target ~ ., data=image_compression.reduced, method = "svmLinear",
@@ -160,7 +162,7 @@ print(svm.model$finalModel@param)
 plot_svm_3d_graph(svm.model)
 
 svm.model$confusion.matrix = confusionMatrix(svm.model, norm = "none")$table
-plot_confusion_matrix(svm.model$confusion.matrix)
+
 folds = svm.model$resampledCM
 
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
@@ -171,15 +173,22 @@ FN_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 svm.model$confusion.matrix = round(svm.model$confusion.matrix/reps)
+svm.model$confusion.matrix.sd = svm.model$confusion.matrix
+svm.model$confusion.matrix.sd[1,1] = TP_sd
+svm.model$confusion.matrix.sd[2,1] = FP_sd
+svm.model$confusion.matrix.sd[1,2] = FN_sd
+svm.model$confusion.matrix.sd[2,2] = TN_sd
+
 
 assert("La somma degli elementi della matrice non è uguale al numero
        di individui", {
          dim(image_compression.reduced)[1] == sum(svm.model$confusion.matrix)
        })
+plot_confusion_matrix(svm.model$confusion.matrix)
+plot_confusion_matrix.sd(svm.model$confusion.matrix.sd)
 
 accuracy_mean = sum(diag(svm.model$confusion.matrix))/sum(svm.model$confusion.matrix)
-accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, accuracy_mean, reps)
-
+accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, reps)
 
 p1 = precision(svm.model$confusion.matrix, relevant=target.levels[1])
 p2 = precision(svm.model$confusion.matrix, relevant=target.levels[2])
@@ -231,7 +240,7 @@ assert("La somma degli elementi della matrice non è uguale al numero
        })
 
 accuracy_mean = sum(diag(nnet.model$confusion.matrix))/sum(nnet.model$confusion.matrix)
-accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, accuracy_mean, reps)
+accuracy_sd = get_accuracy_sd(repeats_confusion_matrixes, reps)
 
 p1 = precision(nnet.model$confusion.matrix, relevant=target.levels[1])
 p2 = precision(nnet.model$confusion.matrix, relevant=target.levels[2])
@@ -247,33 +256,33 @@ F_meas(nnet.model$confusion.matrix, relevant=target.levels[1])
 F_meas(nnet.model$confusion.matrix, relevant=target.levels[2])
 
 #---------------------------- measure 10-cross fold validation  ------------------
-svm.probs = predict(svm.model, image_compression.reduced[,! names(image_compression.reduced) %in% c("target")],
-                    type = "prob")
-rpart.probs = predict(rpart.model, image_compression.reduced[,! names(image_compression.reduced) %in% c("target")],
-                      type = "prob")
-nnet.probs = predict(nnet.model, image_compression.reduced[,! names(image_compression.reduced) %in% c("target")],
-                     type = "prob")
+library(plyr)
+plot(roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs), col="red")
+l_ply(split(rpart.model$pred, rpart.model$pred$Resample), function(d) {
+  plot(roc(predictor = d$high_quality, response = d$obs), col="grey", add = TRUE)
+})
+plot(roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs), col="red", add=TRUE)
 
-svm.ROC = roc(response = image_compression.reduced$target, predictor = svm.probs$high_quality,
-              levels = levels(image_compression.reduced[,c("target")]))
-plot(svm.ROC,type="S", col="green")
+plot(roc(predictor = svm.model$pred$high_quality, response = svm.model$pred$obs), col="green")
+l_ply(split(svm.model$pred, svm.model$pred$Resample), function(d) {
+  plot(roc(predictor = d$high_quality, response = d$obs), col="grey", add = TRUE)
+})
+plot(roc(predictor = svm.model$pred$high_quality, response = svm.model$pred$obs), col="green", add = TRUE)
 
-rpart.ROC = roc(response = image_compression.reduced[,c("target")],
-                predictor =rpart.probs$high_quality,
-                levels = levels(image_compression.reduced[,c("target")]))
-plot(rpart.ROC, add=TRUE, col="blue")
+plot(roc(predictor = nnet.model$pred$high_quality, response = nnet.model$pred$obs), col="blue")
+l_ply(split(nnet.model$pred, nnet.model$pred$Resample), function(d) {
+  plot(roc(predictor = d$high_quality, response = d$obs), col="grey", add = TRUE)
+})
+plot(roc(predictor = nnet.model$pred$high_quality, response = nnet.model$pred$obs), col="blue", add = TRUE)
 
-nnet.ROC = roc(response = image_compression.reduced$target, predictor = nnet.probs$high_quality,
-               levels = levels(image_compression.reduced[,c("target")]))
-plot(nnet.ROC, add=TRUE, col="red")
-
-svm.ROC
-rpart.ROC
-nnet.ROC
+plot(roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs), col="red")
+plot(roc(predictor = svm.model$pred$high_quality, response = svm.model$pred$obs), col="green", add = TRUE)
+plot(roc(predictor = nnet.model$pred$high_quality, response = nnet.model$pred$obs), col="blue", add = TRUE)
 
 cv.values = resamples(list(svm=svm.model, rpart = rpart.model, nnet = nnet.model))
 summary(cv.values)
 dotplot(cv.values, metric = "ROC") 
 bwplot(cv.values, layout = c(3, 1))
-splom(cv.values,metric="ROC")
-cv.values$timings # get the train times for both models
+splom(cv.values, metric="ROC")
+cv.values$timings
+
