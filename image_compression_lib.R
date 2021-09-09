@@ -63,6 +63,18 @@ plot_confusion_matrix <- function(confusion.matrix) {
     scale_y_discrete(labels=c("Low Quality","High quality"))
 }
 
+plot_confusion_matrix.sd <- function(confusion.matrix) {
+  plt <- as.data.frame(confusion.matrix)
+  plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+  ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
+    geom_tile() + geom_text(aes(label=Freq)) +
+    scale_fill_gradient(low="white", high="#4682B4") +
+    labs(x = "Reference",y = "Prediction") +
+    scale_x_discrete(labels=c("High quality","Low Quality")) +
+    scale_y_discrete(labels=c("Low Quality","High quality"))
+}
+
+
 plot_svm_3d_graph <- function(svm.model) {
   coefs <- svm.model$finalModel@coef[[1]]
   mat <- svm.model$finalModel@xmatrix[[1]]
@@ -98,7 +110,7 @@ get_confusion_matrixes_stratified_10_fold <- function(folds, reps) {
   repeats_confusion_matrixes
 }
 
-get_accuracy_sd <- function(repeats_confusion_matrixes, accuracy_mean, reps){
+get_accuracy_sd <- function(repeats_confusion_matrixes, reps){
   accuracies = numeric(reps)
   for(i in 1:reps) {
     confusion_matrix = repeats_confusion_matrixes[i, ]
@@ -107,4 +119,3 @@ get_accuracy_sd <- function(repeats_confusion_matrixes, accuracy_mean, reps){
   }
   sd(accuracies)
 }
-
