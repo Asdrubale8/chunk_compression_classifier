@@ -83,10 +83,10 @@ plot_svm_3d_graph <- function(svm.model) {
   
 }
 
-get_confusion_matrixes_stratified_10_fold <- function(folds) {
-  repeats_confusion_matrixes = data.frame(cell1=1:10, cell2=1:10, cell3=1:10, cell4=1:10)
+get_confusion_matrixes_stratified_10_fold <- function(folds, reps) {
+  repeats_confusion_matrixes = data.frame(cell1=1:reps, cell2=1:reps, cell3=1:reps, cell4=1:reps)
   
-  for(i in 1:10) {
+  for(i in 1:reps) {
     
     rep_i = if (i<10)  paste(c("Rep0", i), collapse = "") else paste(c("Rep", i), collapse = "")
     
@@ -98,9 +98,9 @@ get_confusion_matrixes_stratified_10_fold <- function(folds) {
   repeats_confusion_matrixes
 }
 
-get_accuracy_sd <- function(repeats_confusion_matrixes, accuracy_mean){
-  accuracies = numeric(10)
-  for(i in 1:10) {
+get_accuracy_sd <- function(repeats_confusion_matrixes, accuracy_mean, reps){
+  accuracies = numeric(reps)
+  for(i in 1:reps) {
     confusion_matrix = repeats_confusion_matrixes[i, ]
     accuracies[i] = (confusion_matrix$cell1 + 
                        confusion_matrix$cell4)/sum(confusion_matrix)
