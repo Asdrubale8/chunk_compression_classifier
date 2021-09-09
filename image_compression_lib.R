@@ -82,3 +82,18 @@ plot_svm_3d_graph <- function(svm.model) {
            image_compression.reduced$Dim.3[which(image_compression.reduced$target=='high_quality')], col='blue')
   
 }
+
+get_confusion_matrixes_stratified_10_fold <- function(folds) {
+  repeats_confusion_matrixes = data.frame(cell1=1:10, cell2=1:10, cell3=1:10, cell4=1:10)
+  
+  for(i in 1:10) {
+    
+    rep_i = if (i<10)  paste(c("Rep0", i), collapse = "") else paste(c("Rep", i), collapse = "")
+    
+    repeat_i = dplyr::filter(folds, grepl(rep_i, Resample))
+    repeat_i <- subset( repeat_i, select = c(cell1, cell2, cell3, cell4) )
+    
+    repeats_confusion_matrixes[i,] = repeat_i %>% dplyr::summarise_all(sum)
+  }
+  repeats_confusion_matrixes
+}
