@@ -52,26 +52,19 @@ split.data <- function(data, p = 0.7, s = 1) {
   return(list(train=train, test=test)) 
 } 
 
-plot_confusion_matrix <- function(confusion.matrix) {
+plot_confusion_matrix <- function(confusion.matrix, color = "#009194") {
   plt <- as.data.frame(confusion.matrix)
   plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
   ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
     geom_tile() + geom_text(aes(label=Freq)) +
-    scale_fill_gradient(low="white", high="#009194") +
+    scale_fill_gradient(low="white", high=color) +
     labs(x = "Reference",y = "Prediction") +
     scale_x_discrete(labels=c("High quality","Low Quality")) +
     scale_y_discrete(labels=c("Low Quality","High quality"))
 }
 
 plot_confusion_matrix.sd <- function(confusion.matrix) {
-  plt <- as.data.frame(confusion.matrix)
-  plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
-  ggplot(plt, aes(Reference,Prediction, fill= Freq)) +
-    geom_tile() + geom_text(aes(label=Freq)) +
-    scale_fill_gradient(low="white", high="#4682B4") +
-    labs(x = "Reference",y = "Prediction") +
-    scale_x_discrete(labels=c("High quality","Low Quality")) +
-    scale_y_discrete(labels=c("Low Quality","High quality"))
+  plot_confusion_matrix(confusion.matrix, "#4682B4")
 }
 
 
@@ -110,12 +103,12 @@ get_confusion_matrixes_stratified_10_fold <- function(folds, reps) {
   repeats_confusion_matrixes
 }
 
-get_accuracy_sd <- function(repeats_confusion_matrixes, reps){
+get_accuracies <- function(repeats_confusion_matrixes, reps){
   accuracies = numeric(reps)
   for(i in 1:reps) {
     confusion_matrix = repeats_confusion_matrixes[i, ]
     accuracies[i] = (confusion_matrix$cell1 + 
                        confusion_matrix$cell4)/sum(confusion_matrix)
   }
-  sd(accuracies)
+  accuracies
 }
