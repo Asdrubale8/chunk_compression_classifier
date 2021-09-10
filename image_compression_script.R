@@ -108,6 +108,49 @@ rpart.model = train(target ~ ., data=image_compression.reduced, method = "rpart"
                     trControl = control)
 fancyRpartPlot(rpart.model$finalModel)
 
+#-----Tree--------
+library(plyr)
+
+#-----rpart1------
+rpart1.model = train(target ~ ., data=image_compression.reduced, method = "rpart", metric = "ROC",
+                     trControl = control)
+fancyRpartPlot(rpart1.model$finalModel)
+
+#-----rpart2------
+rpart2.model = train(target ~ ., data=image_compression.reduced, method = "rpart", metric = "Spec",
+                     trControl = control)
+fancyRpartPlot(rpart2.model$finalModel)
+
+#-----rpart3------
+rpart3.model = train(target ~ ., data=image_compression.reduced, method = "rpart", metric = "Sens",
+                     trControl = control)
+fancyRpartPlot(rpart3.model$finalModel)
+
+#-----TRoc--------
+
+roc_with_ci(rpart1.model, "red")
+roc_with_ci(rpart2.model, "purple")
+roc_with_ci(rpart3.model, "green")
+
+plot_roc(rpart1.model, "red")
+plot_roc(rpart2.model, "purple", add=TRUE)
+plot_roc(rpart3.model, "green", add=TRUE)
+
+legend(x = "topright",          # Position
+       legend = c("rpart1", "rpart2", "rpart3"),  # Legend texts
+       #lty = c(1, 2, 3),           # Line types
+       col = c("red", "purple", "green"),           # Line colors
+       lwd = 2)                 # Line width
+
+cv.values = resamples(list(rpart1=rpart1.model, rpart2 = rpart2.model, rpart3 = rpart3.model))
+summary(cv.values)
+dotplot(cv.values, metric = "ROC") 
+bwplot(cv.values, layout = c(3, 1))
+splom(cv.values,metric="ROC")
+cv.values$timings
+
+#-----------
+
 rpart.model$confusion.matrix = confusionMatrix(rpart.model, norm = "none")$table
 
 best_tune = as.numeric(rpart.model$bestTune)
