@@ -112,3 +112,20 @@ get_accuracies <- function(repeats_confusion_matrixes, reps){
   }
   accuracies
 }
+
+roc_with_ci <- function(rpart.model, color) {
+  #rpart.model$pred$Resample <- substr(rpart.model$pred$Resample, 8, 12)
+  rpart.model$pred$Resample
+  plot(roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs), col=color)
+  l_ply(split(rpart.model$pred, rpart.model$pred$Resample), function(d) {
+    plot(roc(predictor = d$high_quality, response = d$obs), col="grey", add=TRUE)
+  })
+  plot(roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs), col=color, add = TRUE)
+  
+} 
+
+plot_roc <- function(rpart.model, color, add=FALSE) {
+  rpart.ROC = roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs)
+                   #levels = levels(image_compression.reduced[,c("target")]))
+  plot(rpart.ROC,type="S", col=color, add=add)
+} 
