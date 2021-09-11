@@ -166,8 +166,8 @@ TN_sd = sd(repeats_confusion_matrixes$cell4)
 rpart.model$confusion.matrix = round(rpart.model$confusion.matrix/reps)
 rpart.model$confusion.matrix.sd = rpart.model$confusion.matrix
 rpart.model$confusion.matrix.sd[1,1] = TP_sd
-rpart.model$confusion.matrix.sd[2,1] = FP_sd
-rpart.model$confusion.matrix.sd[1,2] = FN_sd
+rpart.model$confusion.matrix.sd[2,1] = FN_sd
+rpart.model$confusion.matrix.sd[1,2] = FP_sd
 rpart.model$confusion.matrix.sd[2,2] = TN_sd
 
 assert("La somma degli elementi della matrice non è uguale al numero
@@ -187,10 +187,16 @@ p2 = precision(rpart.model$confusion.matrix, relevant=target.levels[2])
 precision_macro_avg = (p1 + p2) / 2
 precision_micro_avg = (p1 * n_high_quality/n_individuals) + (p2 * n_low_quality/n_individuals)
 
+rpart.precisions1 = get_precisions(repeats_confusion_matrixes, reps, relevant="0")
+rpart.precisions2 = get_precisions(repeats_confusion_matrixes, reps, relevant="1")
+
 r1 = recall(rpart.model$confusion.matrix, relevant=target.levels[1])
 r2 = recall(rpart.model$confusion.matrix, relevant=target.levels[2])
 recall_macro_avg = (r1 + r2) / 2
 recall_micro_avg = (r1 * n_high_quality/n_individuals) + (r2 * n_low_quality/n_individuals)
+
+rpart.recalls1 = get_recalls(repeats_confusion_matrixes, reps, relevant="0")
+rpart.recalls2 = get_recalls(repeats_confusion_matrixes, reps, relevant="1")
 
 F_meas(rpart.model$confusion.matrix, beta = 0.5)
 F_meas(rpart.model$confusion.matrix, beta = 1)
@@ -248,10 +254,16 @@ p2 = precision(svm.model$confusion.matrix, relevant=target.levels[2])
 precision_macro_avg = (p1 + p2) / 2
 precision_micro_avg = (p1 * n_high_quality/n_individuals) + (p2 * n_low_quality/n_individuals)
 
+svm.precisions1 = get_precisions(repeats_confusion_matrixes, reps, relevant="0")
+svm.precisions2 = get_precisions(repeats_confusion_matrixes, reps, relevant="1")
+
 r1 = recall(svm.model$confusion.matrix, relevant=target.levels[1])
 r2 = recall(svm.model$confusion.matrix, relevant=target.levels[2])
 recall_macro_avg = (r1 + r2) / 2
 recall_micro_avg = (r1 * n_high_quality/n_individuals) + (r2 * n_low_quality/n_individuals)
+
+svm.recalls1 = get_recalls(repeats_confusion_matrixes, reps, relevant="0")
+svm.recalls2 = get_recalls(repeats_confusion_matrixes, reps, relevant="1")
 
 F_meas(svm.model$confusion.matrix, beta = 0.5)
 F_meas(svm.model$confusion.matrix, beta = 1)
@@ -269,14 +281,17 @@ svm.model$times
 #testset = image_compression.reduced[ind == 2,]
 #trainset$low_quality = trainset$target == "low_quality"
 #trainset$high_quality = trainset$target == "high_quality"
-#network = neuralnet(low_quality + high_quality~ Dim.1 + Dim.2 + Dim.3, trainset, hidden=5)
+#library(neuralnet)
+#network = neuralnet(target ~ ., image_compression.reduced, hidden=5)
 #plot(network)
+#network$weights
 #net.predict = compute(network, testset[c("Dim.1","Dim.2","Dim.3")])$net.result
 #net.prediction = c("low_quality", "high_quality")[apply(net.predict, 1, which.max)]
 #predict.table = table(testset$target, net.prediction)
 
 nnet.model = train(target ~ ., data=image_compression.reduced, method = "nnet", metric = "ROC", trControl = control)
 
+plot(nnet.mode)
 nnet.model$confusion.matrix = confusionMatrix(nnet.model, norm = "none")$table
 
 best_tune = nnet.model$bestTune
@@ -316,10 +331,17 @@ p2 = precision(nnet.model$confusion.matrix, relevant=target.levels[2])
 precision_macro_avg = (p1 + p2) / 2
 precision_micro_avg = (p1 * n_high_quality/n_individuals) + (p2 * n_low_quality/n_individuals)
 
+nnet.precisions1 = get_precisions(repeats_confusion_matrixes, reps, relevant="0")
+nnet.precisions2 = get_precisions(repeats_confusion_matrixes, reps, relevant="1")
+
 r1 = recall(nnet.model$confusion.matrix, relevant=target.levels[1])
 r2 = recall(nnet.model$confusion.matrix, relevant=target.levels[2])
 recall_macro_avg = (r1 + r2) / 2
 recall_micro_avg = (r1 * n_high_quality/n_individuals) + (r2 * n_low_quality/n_individuals)
+
+
+nnet.recalls1 = get_recalls(repeats_confusion_matrixes, reps, relevant="0")
+nnet.recalls2 = get_recalls(repeats_confusion_matrixes, reps, relevant="1")
 
 F_meas(nnet.model$confusion.matrix, beta = 0.5)
 F_meas(nnet.model$confusion.matrix, beta = 1)
@@ -355,6 +377,11 @@ plot(roc(predictor = nnet.model$pred$high_quality, response = nnet.model$pred$ob
 plot(roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs), col="red")
 plot(roc(predictor = svm.model$pred$high_quality, response = svm.model$pred$obs), col="green", add = TRUE)
 plot(roc(predictor = nnet.model$pred$high_quality, response = nnet.model$pred$obs), col="blue", add = TRUE)
+legend(x = "topright",          # Position
+       legend = c("rpart", "svm", "nnet"),  # Legend texts
+       #lty = c(1, 2, 3),           # Line types
+       col = c("red", "green", "blue"),           # Line colors
+       lwd = 2)
 
 cv.values = resamples(list(svm=svm.model, rpart = rpart.model, nnet = nnet.model))
 summary(cv.values)
@@ -362,3 +389,10 @@ dotplot(cv.values, metric = "ROC")
 bwplot(cv.values, layout = c(3, 1))
 splom(cv.values, metric="ROC")
 cv.values$timings
+
+boxplot(rpart.precisions1, svm.precisions1, nnet.precisions1, names = c("rpart", "svm", "nnet"), main="precision - high_q")
+boxplot(rpart.precisions2, svm.precisions2, nnet.precisions2, names = c("rpart", "svm", "nnet"), main="precision - low_q")
+
+boxplot(rpart.recalls1, svm.recalls1, nnet.recalls1, names = c("rpart", "svm", "nnet"), main="recall - high_q")
+boxplot(rpart.recalls2, svm.recalls2, nnet.recalls2, names = c("rpart", "svm", "nnet"), main="recall - low_q")
+
