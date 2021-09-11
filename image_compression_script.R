@@ -97,35 +97,64 @@ control = trainControl(method = "repeatedcv", number = 10,  repeats = reps,retur
                        classProbs = TRUE, summaryFunction = twoClassSummary)
 
 #---------------------------- decision tree ------------------------------------
-#decisionTree = rpart(target ~ ., data=image_compression.reduced, method="class")
-#plotcp(decisionTree)
-#cp.decided = 0.01494565
-#prunedDecisionTree = prune(decisionTree, cp=cp.decided)
-#plotcp(prunedDecisionTree)
-#fancyRpartPlot(prunedDecisionTree)
-
 rpart.model = train(target ~ ., data=image_compression.reduced, method = "rpart", metric = "ROC",
                     trControl = control)
 fancyRpartPlot(rpart.model$finalModel)
-
-#-----Tree--------
-library(plyr)
 
 #-----rpart1------
 rpart1.model = train(target ~ ., data=image_compression.reduced, method = "rpart", metric = "ROC",
                      trControl = control)
 fancyRpartPlot(rpart1.model$finalModel)
 
+rpart1.model$confusion.matrix = confusionMatrix(rpart1.model, norm = "none")$table
+
+folds = rpart1.model$resampledCM
+
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+rpart1.model$confusion.matrix = round(rpart1.model$confusion.matrix/reps)
+plot_confusion_matrix(rpart1.model$confusion.matrix)
+
 #-----rpart2------
 rpart2.model = train(target ~ ., data=image_compression.reduced, method = "rpart", metric = "Spec",
                      trControl = control)
 fancyRpartPlot(rpart2.model$finalModel)
 
+rpart2.model$confusion.matrix = confusionMatrix(rpart2.model, norm = "none")$table
+
+folds = rpart2.model$resampledCM
+
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+rpart2.model$confusion.matrix = round(rpart2.model$confusion.matrix/reps)
+plot_confusion_matrix(rpart2.model$confusion.matrix)
 #-----rpart3------
 rpart3.model = train(target ~ ., data=image_compression.reduced, method = "rpart", metric = "Sens",
                      trControl = control)
-fancyRpartPlot(rpart3.model$finalModel)
 
+rpart3.model$confusion.matrix = confusionMatrix(rpart3.model, norm = "none")$table
+
+folds = rpart3.model$resampledCM
+
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+rpart3.model$confusion.matrix = round(rpart3.model$confusion.matrix/reps)
+plot_confusion_matrix(rpart3.model$confusion.matrix)
 #-----TRoc--------
 
 roc_with_ci(rpart1.model, "red")
@@ -150,6 +179,7 @@ splom(cv.values,metric="ROC")
 cv.values$timings
 
 #-----------
+rpart.model = rpart1.model
 
 rpart.model$confusion.matrix = confusionMatrix(rpart.model, norm = "none")$table
 
@@ -209,14 +239,111 @@ boxplot(rpart.model$resample$Sens, main="rpart Sensitivity")
 boxplot(rpart.model$resample$Spec, main="rpart Specificity")
 rpart.model$times
 #---------------------------- SVM -----------------------------------------------
+tune.gridxgb <- expand.grid(C=c(0.002,0.5,1))
 svm.model =  train(target ~ ., data=image_compression.reduced, method = "svmLinear",
-                   metric = "ROC",
+                   metric = "ROC",tuneLength=3, tuneGrid=tune.gridxgb,
                    trControl = control)
 plot(svm.model)
 print(svm.model)
 print(svm.model$finalModel@param)
 
 plot_svm_3d_graph(svm.model)
+
+#-----SVM05------
+tune.gridxgb <- expand.grid(C=c(0.5))
+svm05.model =  train(target ~ ., data=image_compression.reduced, method = "svmLinear",
+                     metric = "ROC", tuneGrid =tune.gridxgb,
+                     trControl = control)
+plot(svm05.model)
+print(svm05.model)
+print(svm05.model$finalModel@param)
+
+plot_svm_3d_graph(svm05.model)
+
+svm05.model$confusion.matrix = confusionMatrix(svm05.model, norm = "none")$table
+
+folds = svm05.model$resampledCM
+
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+svm05.model$confusion.matrix = round(svm05.model$confusion.matrix/reps)
+plot_confusion_matrix(svm05.model$confusion.matrix)
+#-----SVM1-------
+tune.gridxgb <- expand.grid(C=c(1))
+svm1.model =  train(target ~ ., data=image_compression.reduced, method = "svmLinear",
+                    metric = "ROC", tuneGrid =tune.gridxgb,
+                    trControl = control)
+plot(svm1.model)
+print(svm1.model)
+print(svm1.model$finalModel@param)
+
+plot_svm_3d_graph(svm1.model)
+
+svm1.model$confusion.matrix = confusionMatrix(svm1.model, norm = "none")$table
+
+folds = svm1.model$resampledCM
+
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+svm1.model$confusion.matrix = round(svm1.model$confusion.matrix/reps)
+plot_confusion_matrix(svm1.model$confusion.matrix)
+#-----SVM0002-------
+tune.gridxgb <- expand.grid(C=c(0.002))
+svm0002.model =  train(target ~ ., data=image_compression.reduced, method = "svmLinear",
+                       metric = "ROC", tuneGrid =tune.gridxgb,
+                       trControl = control)
+plot(svm0002.model)
+print(svm0002.model)
+print(svm0002.model$finalModel@param)
+
+plot_svm_3d_graph(svm0002.model)
+
+svm0002.model$confusion.matrix = confusionMatrix(svm0002.model, norm = "none")$table
+
+folds = svm0002.model$resampledCM
+
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+svm0002.model$confusion.matrix = round(svm0002.model$confusion.matrix/reps)
+plot_confusion_matrix(svm0002.model$confusion.matrix)
+#-----SVMroc-------
+roc_with_ci(svm8.model, "red")
+roc_with_ci(svm05.model, "purple")
+roc_with_ci(svm1.model, "green")
+
+plot_roc(svm8.model, "red")
+plot_roc(svm05.model, "purple", add=TRUE)
+plot_roc(svm1.model, "green", add=TRUE)
+
+legend(x = "topright",          # Position
+       legend = c("svm0002", "svm05", "svm1"),  # Legend texts
+       #lty = c(1, 2, 3),           # Line types
+       col = c("red", "purple", "green"),           # Line colors
+       lwd = 2)                 # Line width
+
+cv.values = resamples(list(svm002=svm8.model, svm05 = svm05.model, svm1 = svm1.model))
+summary(cv.values)
+dotplot(cv.values, metric = "ROC") 
+bwplot(cv.values, layout = c(3, 1))
+splom(cv.values,metric="ROC")
+cv.values$timings
+#------------------
+svm.model = svm05.model
 
 svm.model$confusion.matrix = confusionMatrix(svm.model, norm = "none")$table
 
@@ -289,10 +416,92 @@ svm.model$times
 #net.prediction = c("low_quality", "high_quality")[apply(net.predict, 1, which.max)]
 #predict.table = table(testset$target, net.prediction)
 
-nnet.model = train(target ~ ., data=image_compression.reduced, method = "nnet", metric = "ROC", trControl = control)
+tune.gridxgb <- expand.grid(size=c(1,2,3,4,5), decay=c(0.1))
+nnet.model = train(target ~ ., data=image_compression.reduced, method = "nnet", 
+                   metric = "ROC", trControl = control, tuneGrid=tune.gridxgb)
 
-plot(nnet.mode)
+plot(nnet.model,col="dark green")
+print(nnet.model)
+print(nnet.model$finalModel@param)
+
 nnet.model$confusion.matrix = confusionMatrix(nnet.model, norm = "none")$table
+#------Nnet1------
+tune.gridxgb <- expand.grid(size=c(1), decay=c(0.1))
+nnet1.model = train(target ~ ., data=image_compression.reduced, method = "nnet", metric = "ROC", trControl = control, tuneGrid = tune.gridxgb)
+
+nnet1.model$confusion.matrix = confusionMatrix(nnet1.model, norm = "none")$table
+
+folds = nnet1.model$resampledCM
+
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+nnet1.model$confusion.matrix = round(nnet1.model$confusion.matrix/reps)
+plot_confusion_matrix(nnet1.model$confusion.matrix)
+#------Nnet3------
+tune.gridxgb <- expand.grid(size=c(3), decay=c(0.1))
+nnet3.model = train(target ~ ., data=image_compression.reduced, method = "nnet", metric = "ROC", trControl = control, tuneGrid = tune.gridxgb)
+
+nnet3.model$confusion.matrix = confusionMatrix(nnet3.model, norm = "none")$table
+
+folds = nnet3.model$resampledCM
+
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+nnet3.model$confusion.matrix = round(nnet3.model$confusion.matrix/reps)
+plot_confusion_matrix(nnet3.model$confusion.matrix)
+
+#------Nnet5------
+tune.gridxgb <- expand.grid(size=c(5), decay=c(0.1))
+nnet5.model = train(target ~ ., data=image_compression.reduced, method = "nnet", metric = "ROC", trControl = control, tuneGrid = tune.gridxgb)
+
+nnet5.model$confusion.matrix = confusionMatrix(nnet5.model, norm = "none")$table
+
+folds = nnet5.model$resampledCM
+
+repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
+
+TP_sd = sd(repeats_confusion_matrixes$cell1)
+FP_sd = sd(repeats_confusion_matrixes$cell2)
+FN_sd = sd(repeats_confusion_matrixes$cell3)
+TN_sd = sd(repeats_confusion_matrixes$cell4)
+
+nnet5.model$confusion.matrix = round(nnet5.model$confusion.matrix/reps)
+plot_confusion_matrix(nnet5.model$confusion.matrix)
+
+#------NnetROC-------
+
+roc_with_ci(nnet1.model, "red")
+roc_with_ci(nnet3.model, "purple")
+roc_with_ci(nnet5.model, "green")
+
+plot(roc(predictor = nnet1.model$pred$high_quality, response = nnet1.model$pred$obs), col="red")
+plot(roc(predictor = nnet3.model$pred$high_quality, response = nnet3.model$pred$obs), col="purple", add = TRUE)
+plot(roc(predictor = nnet5.model$pred$high_quality, response = nnet5.model$pred$obs), col="green", add = TRUE)
+
+legend(x = "topright",          # Position
+       legend = c("nnet1", "nnet3", "nnet5"),  # Legend texts
+       #lty = c(1, 2, 3),           # Line types
+       col = c("red", "purple", "green"),           # Line colors
+       lwd = 2)                 # Line width
+
+cv.values = resamples(list(nnet1=nnet1.model, nnet3 = nnet3.model, nnet5 = nnet5.model))
+summary(cv.values)
+dotplot(cv.values, metric = "ROC") 
+bwplot(cv.values, layout = c(3, 1))
+splom(cv.values, metric="ROC")
+cv.values$timings
+#--------------------
+nnet.model=nnet3.model
 
 best_tune = nnet.model$bestTune
 best_size = as.numeric(nnet.model$bestTune[1])
@@ -356,27 +565,14 @@ nnet.model$times
 
 #---------------------------- measure 10-cross fold validation  ------------------
 
-plot(roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs), col="red")
-l_ply(split(rpart.model$pred, rpart.model$pred$Resample), function(d) {
-  plot(roc(predictor = d$high_quality, response = d$obs), col="grey", add = TRUE)
-})
-plot(roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs), col="red", add=TRUE)
+roc_with_ci(rpart.model,"red")
+roc_with_ci(svm.model,"green")
+roc_with_ci(nnet.model,"blue")
 
-plot(roc(predictor = svm.model$pred$high_quality, response = svm.model$pred$obs), col="green")
-l_ply(split(svm.model$pred, svm.model$pred$Resample), function(d) {
-  plot(roc(predictor = d$high_quality, response = d$obs), col="grey", add = TRUE)
-})
-plot(roc(predictor = svm.model$pred$high_quality, response = svm.model$pred$obs), col="green", add = TRUE)
+plot_roc(rpart.model,"red")
+plot_roc(svm.model,"green",add=TRUE)
+plot_roc(nnet.model,"blue",add=TRUE)
 
-plot(roc(predictor = nnet.model$pred$high_quality, response = nnet.model$pred$obs), col="blue")
-l_ply(split(nnet.model$pred, nnet.model$pred$Resample), function(d) {
-  plot(roc(predictor = d$high_quality, response = d$obs), col="grey", add = TRUE)
-})
-plot(roc(predictor = nnet.model$pred$high_quality, response = nnet.model$pred$obs), col="blue", add = TRUE)
-
-plot(roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs), col="red")
-plot(roc(predictor = svm.model$pred$high_quality, response = svm.model$pred$obs), col="green", add = TRUE)
-plot(roc(predictor = nnet.model$pred$high_quality, response = nnet.model$pred$obs), col="blue", add = TRUE)
 legend(x = "topright",          # Position
        legend = c("rpart", "svm", "nnet"),  # Legend texts
        #lty = c(1, 2, 3),           # Line types
