@@ -143,7 +143,7 @@ get_recalls <- function(repeats_confusion_matrixes, reps, relevant="0"){
   recalls
 }
 
-get_confusion_matrix_from_row(confusion_matrix_row){
+get_confusion_matrix_from_row = function(confusion_matrix_row){
   confusion_matrix = get_empty_confusion_matrix()
   confusion_matrix[1,1] = confusion_matrix_row$cell1
   confusion_matrix[2,1] = confusion_matrix_row$cell2
