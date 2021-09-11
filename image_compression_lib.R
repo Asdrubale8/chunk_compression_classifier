@@ -113,6 +113,46 @@ get_accuracies <- function(repeats_confusion_matrixes, reps){
   accuracies
 }
 
+get_empty_confusion_matrix = function(){
+  x = as.factor(c("0","1"))
+  empty_cm = confusionMatrix(x, x)$table
+  empty_cm[1,1] = empty_cm[1,2] = empty_cm[2,1] = empty_cm[2,2] = 0
+  empty_cm
+}
+
+get_precisions <- function(repeats_confusion_matrixes, reps, relevant="0"){
+  precisions = numeric(reps)
+  for(i in 1:reps) {
+    confusion_matrix_row = repeats_confusion_matrixes[i, ]
+    confusion_matrix = get_confusion_matrix_from_row(confusion_matrix_row)
+    precisions[i] = precision(confusion_matrix, relevant=relevant)
+  }
+  
+  precisions
+}
+
+get_recalls <- function(repeats_confusion_matrixes, reps, relevant="0"){
+  recalls = numeric(reps)
+  
+  for(i in 1:reps) {
+    confusion_matrix_row = repeats_confusion_matrixes[i, ]
+    confusion_matrix = get_confusion_matrix_from_row(confusion_matrix_row)
+    recalls[i] = recall(confusion_matrix, relevant=relevant)
+  }
+  
+  recalls
+}
+
+get_confusion_matrix_from_row(confusion_matrix_row){
+  confusion_matrix = get_empty_confusion_matrix()
+  confusion_matrix[1,1] = confusion_matrix_row$cell1
+  confusion_matrix[2,1] = confusion_matrix_row$cell2
+  confusion_matrix[1,2] = confusion_matrix_row$cell3
+  confusion_matrix[2,2] = confusion_matrix_row$cell4
+  
+  confusion_matrix
+}
+
 roc_with_ci <- function(rpart.model, color) {
   #rpart.model$pred$Resample <- substr(rpart.model$pred$Resample, 8, 12)
   rpart.model$pred$Resample
@@ -126,6 +166,6 @@ roc_with_ci <- function(rpart.model, color) {
 
 plot_roc <- function(rpart.model, color, add=FALSE) {
   rpart.ROC = roc(predictor = rpart.model$pred$high_quality, response = rpart.model$pred$obs)
-                   #levels = levels(image_compression.reduced[,c("target")]))
+  #levels = levels(image_compression.reduced[,c("target")]))
   plot(rpart.ROC,type="S", col=color, add=add)
 } 
