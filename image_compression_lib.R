@@ -169,3 +169,4 @@ plot_roc <- function(rpart.model, color, add=FALSE) {
   #levels = levels(image_compression.reduced[,c("target")]))
   plot(rpart.ROC,type="S", col=color, add=add)
 } 
+
