@@ -113,8 +113,8 @@ folds = rpart1.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 rpart1.model$confusion.matrix = round(rpart1.model$confusion.matrix/reps)
@@ -132,8 +132,8 @@ folds = rpart2.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 rpart2.model$confusion.matrix = round(rpart2.model$confusion.matrix/reps)
@@ -149,8 +149,8 @@ folds = rpart3.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 rpart3.model$confusion.matrix = round(rpart3.model$confusion.matrix/reps)
@@ -189,8 +189,8 @@ folds = rpart.model$resampledCM[rpart.model$resampledCM$cp == best_tune, ]
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 rpart.model$confusion.matrix = round(rpart.model$confusion.matrix/reps)
@@ -267,8 +267,8 @@ folds = svm05.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 svm05.model$confusion.matrix = round(svm05.model$confusion.matrix/reps)
@@ -291,8 +291,8 @@ folds = svm1.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 svm1.model$confusion.matrix = round(svm1.model$confusion.matrix/reps)
@@ -315,8 +315,8 @@ folds = svm0002.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 svm0002.model$confusion.matrix = round(svm0002.model$confusion.matrix/reps)
@@ -352,15 +352,15 @@ folds = svm.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 svm.model$confusion.matrix = round(svm.model$confusion.matrix/reps)
 svm.model$confusion.matrix.sd = svm.model$confusion.matrix
 svm.model$confusion.matrix.sd[1,1] = TP_sd
-svm.model$confusion.matrix.sd[2,1] = FP_sd
-svm.model$confusion.matrix.sd[1,2] = FN_sd
+svm.model$confusion.matrix.sd[2,1] = FN_sd
+svm.model$confusion.matrix.sd[1,2] = FP_sd
 svm.model$confusion.matrix.sd[2,2] = TN_sd
 
 assert("La somma degli elementi della matrice non è uguale al numero
@@ -403,19 +403,6 @@ boxplot(svm.model$resample$Sens, main="svm Sensitivity")
 boxplot(svm.model$resample$Spec, main="svm Specificity")
 svm.model$times
 #---------------------------- Nnet ----------------------------------------------
-#ind = sample(2, nrow(image_compression.reduced), replace = TRUE, prob=c(0.7, 0.3))
-#trainset = image_compression.reduced[ind == 1,]
-#testset = image_compression.reduced[ind == 2,]
-#trainset$low_quality = trainset$target == "low_quality"
-#trainset$high_quality = trainset$target == "high_quality"
-#library(neuralnet)
-#network = neuralnet(target ~ ., image_compression.reduced, hidden=5)
-#plot(network)
-#network$weights
-#net.predict = compute(network, testset[c("Dim.1","Dim.2","Dim.3")])$net.result
-#net.prediction = c("low_quality", "high_quality")[apply(net.predict, 1, which.max)]
-#predict.table = table(testset$target, net.prediction)
-
 tune.gridxgb <- expand.grid(size=c(1,2,3,4,5), decay=c(0.1))
 nnet.model = train(target ~ ., data=image_compression.reduced, method = "nnet", 
                    metric = "ROC", trControl = control, tuneGrid=tune.gridxgb)
@@ -436,8 +423,8 @@ folds = nnet1.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 nnet1.model$confusion.matrix = round(nnet1.model$confusion.matrix/reps)
@@ -453,8 +440,8 @@ folds = nnet3.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 nnet3.model$confusion.matrix = round(nnet3.model$confusion.matrix/reps)
@@ -471,8 +458,8 @@ folds = nnet5.model$resampledCM
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 nnet5.model$confusion.matrix = round(nnet5.model$confusion.matrix/reps)
@@ -512,15 +499,15 @@ folds = nnet.model$resampledCM[nnet.model$resampledCM$size == best_size
 repeats_confusion_matrixes = get_confusion_matrixes_stratified_10_fold(folds, reps)
 
 TP_sd = sd(repeats_confusion_matrixes$cell1)
-FP_sd = sd(repeats_confusion_matrixes$cell2)
-FN_sd = sd(repeats_confusion_matrixes$cell3)
+FN_sd = sd(repeats_confusion_matrixes$cell2)
+FP_sd = sd(repeats_confusion_matrixes$cell3)
 TN_sd = sd(repeats_confusion_matrixes$cell4)
 
 nnet.model$confusion.matrix = round(nnet.model$confusion.matrix/reps)
 nnet.model$confusion.matrix.sd = nnet.model$confusion.matrix
 nnet.model$confusion.matrix.sd[1,1] = TP_sd
-nnet.model$confusion.matrix.sd[2,1] = FP_sd
-nnet.model$confusion.matrix.sd[1,2] = FN_sd
+nnet.model$confusion.matrix.sd[2,1] = FN_sd
+nnet.model$confusion.matrix.sd[1,2] = FP_sd
 nnet.model$confusion.matrix.sd[2,2] = TN_sd
 
 assert("La somma degli elementi della matrice non è uguale al numero
@@ -563,8 +550,7 @@ boxplot(nnet.model$resample$Sens, main="nnet Sensitivity")
 boxplot(nnet.model$resample$Spec, main="nnet Specificity")
 nnet.model$times
 
-#---------------------------- measure 10-cross fold validation  ------------------
-
+#---------------------------- measure of performance  --------------------------
 roc_with_ci(rpart.model,"red")
 roc_with_ci(svm.model,"green")
 roc_with_ci(nnet.model,"blue")
